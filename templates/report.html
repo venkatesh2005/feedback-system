@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Feedback Report</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <style>
+      .header-image {
+        width: 100%;
+        max-height: 200px;
+        object-fit: cover;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container my-5">
+        <a href="{{ url_for('download_report', form_id=form_details['_id']) }}" class="btn btn-primary mt-4">
+            Download Report
+          </a>
+          
+      <!-- Header Image -->
+      <img src="{{ header_image }}" alt="Header Image" class="header-image" />
+
+      <h3 class="text-center">FACULTY PERFORMANCE – STUDENT’S FEEDBACK</h3>
+      <h3 class="text-center">SUMMARY REPORT</h3>
+      <h3 class="text-center">
+        Academic Year {{ form_details.academic_year }} ({{ semester_type }})
+      </h3>
+
+      <!-- Overall Details Table -->
+      <table class="table table-bordered mt-4">
+        <tr>
+          <th>Department</th>
+          <td>{{ form_details.department }}</td>
+        </tr>
+        <tr>
+          <th>Year and Semester</th>
+          <td>{{ form_details.batch }}</td>
+        </tr>
+        <tr>
+          <th>Students Strength</th>
+          <td>{{ student_count }}</td>
+        </tr>
+        <tr>
+          <th>Number of Students Participated</th>
+          <td>{{ students_participated }}</td>
+        </tr>
+      </table>
+
+      <!-- Overall Feedback Table -->
+      <table class="table table-bordered mt-4">
+        <thead>
+          <tr>
+            <th>Course Code & Title</th>
+            <th>Subject Handling Faculty</th>
+            <th>Average Point</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for course in form_details.courses %}
+          <tr>
+            <td>{{ course.course_code }} - {{ course.course_name }}</td>
+            <td>{{ course.staff_name }}</td>
+            <td>{{ course_averages[course.course_code] | round(2) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Bar Chart -->
+      <canvas id="feedbackChart"></canvas>
+      <script>
+        document.addEventListener("DOMContentLoaded", function () {
+          const ctx = document.getElementById("feedbackChart").getContext("2d");
+          const courseCodes = {{ form_details.courses | map(attribute='course_code') | list | tojson }};
+          const courseNames = {{ form_details.courses | map(attribute='course_name') | list | tojson }};
+          const averages = {{ course_averages.values() | list | tojson }};
+          const labels = courseCodes.map((code, index) => `${code} - ${courseNames[index]}`);
+
+          new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: 'Average Points',
+                data: averages,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+              }],
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                tooltip: {
+                  callbacks: {
+                    label: function (context) {
+                      return `Average: ${context.raw.toFixed(2)}`;
+                    },
+                  },
+                },
+                datalabels: {
+                  display: true,
+                  align: 'top',
+                  color: 'black',
+                  font: {
+                    size: 14,
+                    weight: 'bold',
+                  },
+                  formatter: function (value) {
+                    return value.toFixed(2);
+                  },
+                },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 5,
+                  title: {
+                    display: true,
+                    text: 'Average Points',
+                  },
+                },
+                x: {
+                  title: {
+                    display: true,
+                    text: 'Course Code & Title',
+                  },
+                },
+              },
+            },
+            plugins: [ChartDataLabels],
+          });
+        });
+      </script>
+
+      <!-- Individual Faculty Reports -->
+      {% for faculty in faculty_reports %}
+      <hr />
+      <!-- Header Image for Individual Section -->
+      <img src="{{ header_image }}" alt="Header Image" class="header-image" />
+
+      <h3 class="text-center">FACULTY PERFORMANCE – STUDENT’S FEEDBACK</h3>
+      <h3 class="text-center">SUMMARY REPORT</h3>
+      <h3 class="text-center">
+        Academic Year {{ form_details.academic_year }} ({{ semester_type }})
+      </h3>
+
+      
+      <!-- Faculty Details Table -->
+      <table class="table table-bordered mt-4">
+        <tr>
+          <th>Name of the Faculty</th>
+          <td>{{ faculty.staff_name }}</td>
+        </tr>
+        <tr>
+          <th>Designation / Department</th>
+          <td>{{ form_details.department }}</td>
+        </tr>
+        <tr>
+          <th>Course Code & Title</th>
+          <td>{{ faculty.course_code }} - {{ faculty.course_title }}</td>
+        </tr>
+        <tr>
+          <th>Class & Semester</th>
+          <td>{{ form_details.batch }}</td>
+        </tr>
+      </table>
+
+      <!-- Observations Table -->
+      <h4 class="text-center">Observations</h4>
+      <table class="table table-bordered mt-4">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Particulars</th>
+            <th>Individual Mean</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set particulars = [ "Explicitly spells out the learning objectives
+          of the course, various chapters, and evaluation pattern", "Coverage
+          and completion of the syllabus", "Course material / class notes
+          given", "Gives assignment / homework regularly and monitors them
+          properly", "Is punctual to the class and engages for the entire hour",
+          "Presents subject matter on the board / PPTs, etc., neatly in a format
+          readable by all", "Provides feedback about the progress of the
+          students and motivates them by giving tips and advice", "Encourages
+          the students to actively participate in the class activities (through
+          discussions, question answers, brainstorming, etc.)" ] %} {% for
+          index, mean in faculty.question_means %}
+          <tr>
+            <td>{{ index }}</td>
+            <td>{{ particulars[index - 1] }}</td>
+            <td>{{ mean | round(2) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <p><strong>Total Students:</strong> {{ students_participated }}</p>
+      <p>
+        <strong>Overall Mean:</strong>
+        {{ faculty.question_means | sum(attribute=1) | round(2) }}
+      </p>
+
+      <!-- Suggestions -->
+      <h5>Suggestions:</h5>
+      <ul>
+        {% for suggestion in faculty.suggestions %}
+        <li>{{ suggestion }}</li>
+        {% endfor %}
+      </ul>
+
+      <p><strong>Principal</strong></p>
+      {% endfor %}
+    </div>
+  </body>
+</html>

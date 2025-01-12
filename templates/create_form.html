@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Feedback Form</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #f5f7fa;
+        margin: 0;
+        padding: 0;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 40px auto;
+        background: white;
+        padding: 20px 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      label {
+        font-size: 16px;
+        font-weight: 500;
+        margin-bottom: 5px;
+        display: block;
+        color: #555;
+      }
+
+      input,
+      select {
+        width: 100%;
+        padding: 10px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        outline: none;
+        transition: border-color 0.3s ease;
+      }
+
+      input:focus,
+      select:focus {
+        border-color: #673ab7;
+      }
+
+      .form-inline {
+        display: flex;
+        gap: 15px;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .form-inline input {
+        width: calc(33.33% - 10px); /* Equal width for three input boxes */
+        margin-bottom: 0;
+      }
+
+      button {
+        display: inline-block;
+        background-color: #673ab7;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #542e9d;
+      }
+
+      h3 {
+        font-size: 20px;
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .form-section {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        background-color: #f9f9f9;
+      }
+
+      .form-section:nth-child(even) {
+        background-color: #f0f0f0;
+      }
+
+      .form-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .form-actions button:last-child {
+        background-color: #4caf50;
+      }
+
+      .form-actions button:last-child:hover {
+        background-color: #388e3c;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          padding: 15px;
+        }
+
+        h1 {
+          font-size: 20px;
+        }
+
+        .form-inline {
+          flex-direction: column;
+        }
+
+        .form-inline input {
+          width: 100%;
+        }
+
+        button {
+          font-size: 14px;
+          padding: 8px 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Create Feedback Form</h1>
+      <form action="/create_form" method="POST">
+        <label for="academicYear">Academic Year</label>
+        <input
+          type="text"
+          id="academicYear"
+          name="academicYear"
+          placeholder="Enter Academic Year (e.g., 2023-2024)"
+          required
+        />
+
+        <label for="department">Department</label>
+        <input
+          type="text"
+          id="department"
+          name="department"
+          placeholder="Enter Department"
+          required
+        />
+
+        <label for="semester">Semester</label>
+        <select id="semester" name="semester" required>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+        </select>
+
+        <label for="batch">Batch</label>
+        <input
+          type="text"
+          id="batch"
+          name="batch"
+          placeholder="Enter Batch (e.g., Batch A)"
+          required
+        />
+
+        <div id="courses">
+          <div class="form-section">
+            <h3>Course 1</h3>
+            <div class="form-inline">
+              <input
+                type="text"
+                name="courseCode1"
+                placeholder="Course Code"
+                required
+              />
+              <input
+                type="text"
+                name="courseTitle1"
+                placeholder="Course Title"
+                required
+              />
+              <input
+                type="text"
+                name="staffName1"
+                placeholder="Staff Name"
+                required
+              />
+            </div>
+          </div>
+        </div>
+        <button type="button" id="addCourse">Add Another Course</button>
+        <input type="hidden" id="courseCount" name="courseCount" value="1" />
+        <div class="form-actions">
+          <button type="reset">Reset Form</button>
+          <button type="submit">Create Form</button>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      let courseCount = 1;
+      document.getElementById("addCourse").addEventListener("click", () => {
+        courseCount++;
+        const coursesDiv = document.getElementById("courses");
+        const newCourseHTML = `
+          <div class="form-section">
+            <h3>Course ${courseCount}</h3>
+            <div class="form-inline">
+              <input type="text" name="courseCode${courseCount}" placeholder="Course Code" required />
+              <input type="text" name="courseTitle${courseCount}" placeholder="Course Title" required />
+              <input type="text" name="staffName${courseCount}" placeholder="Staff Name" required />
+            </div>
+          </div>
+        `;
+        coursesDiv.insertAdjacentHTML("beforeend", newCourseHTML);
+        document.getElementById("courseCount").value = courseCount;
+      });
+    </script>
+  </body>
+</html>

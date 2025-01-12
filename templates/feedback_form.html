@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Forms Style Feedback</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #f1f3f4;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .header {
+        background-color: #673ab7;
+        color: white;
+        padding: 24px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .header h3 {
+        font-size: 16px;
+        font-weight: 400;
+      }
+
+      .info {
+        padding: 16px;
+        background-color: #673ab7;
+        color: white;
+        border-radius: 8px;
+        margin-bottom: 16px;
+      }
+
+      .info p {
+        font-size: 14px;
+        margin: 4px 0;
+      }
+
+      .question-box {
+        background-color: white;
+        padding: 16px;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
+      }
+
+      .question-box label {
+        font-size: 16px;
+        font-weight: 500;
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .question-box .required {
+        color: red;
+        margin-left: 4px;
+      }
+
+      .options label {
+        display: flex;
+        align-items: center;
+        margin-bottom: 12px;
+        font-size: 14px;
+        font-weight: 400;
+      }
+
+      .options input[type="radio"] {
+        margin-right: 10px;
+      }
+
+      .suggestions input[type="text"] {
+        width: 100%;
+        border: none;
+        border-bottom: 2px solid #dadce0;
+        font-size: 14px;
+        padding: 8px 0;
+        margin-top: 8px;
+        outline: none;
+        transition: border-color 0.3s ease;
+      }
+
+      .suggestions input[type="text"]:focus {
+        border-bottom: 2px solid #673ab7;
+      }
+
+      @media (max-width: 768px) {
+        .header h1 {
+          font-size: 18px;
+        }
+
+        .header h3 {
+          font-size: 14px;
+        }
+
+        .info p {
+          font-size: 13px;
+        }
+
+        .question-box label {
+          font-size: 14px;
+        }
+
+        .options label {
+          font-size: 12px;
+        }
+
+        .suggestions input[type="text"] {
+          font-size: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <form action="/submit_feedback" method="POST">
+      <div class="container">
+        <!-- Hidden Field to Send form_id -->
+        <input type="hidden" name="form_id" value="{{ form_details['_id'] }}" />
+
+        <!-- Header Section -->
+        <div class="header">
+          <h1>Faculty Performance - Student's Feedback</h1>
+          <h3>
+            {{ form_details.department }} - {{ form_details.batch }}<br />
+            Academic Year {{ form_details.academic_year }} ({{ "Odd Semester" if
+            form_details.semester|int % 2 != 0 else "Even Semester" }})
+          </h3>
+        </div>
+
+        <!-- Loop through each course -->
+        {% for course in form_details.courses %}
+        <div class="info">
+          <p>
+            <strong>Course:</strong> {{ course.course_code }} - {{
+            course.course_name }}
+          </p>
+          <p><strong>Faculty:</strong> {{ course.staff_name }}</p>
+        </div>
+
+        <!-- Questions -->
+        {% for question_number in range(1, 9) %}
+        <div class="question-box">
+          <label>
+            {{ question_number }}. {{ [ "Explicitly spells out the learning
+            objectives of the course, various chapters, and evaluation pattern",
+            "Coverage and completion of the syllabus", "Course material / class
+            notes given", "Gives assignment / homework regularly and monitors
+            them properly", "Is punctual to the class and engages for the entire
+            hour", "Presents subject matter on the board / PPTs, etc., neatly in
+            a format readable by all", "Provides feedback about the progress of
+            the students and motivates them by giving tips and advice",
+            "Encourages the students to actively participate in the class
+            activities (through discussions / question answers / brainstorming /
+            etc.)" ][question_number - 1] }}
+            <span class="required">*</span>
+          </label>
+          <div class="options">
+            <label
+              ><input
+                type="radio"
+                name="q{{ question_number }}_{{ course.course_code }}"
+                value="5"
+                required
+              />5 - Excellent</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="q{{ question_number }}_{{ course.course_code }}"
+                value="4"
+              />4 - Very Good</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="q{{ question_number }}_{{ course.course_code }}"
+                value="3"
+              />3 - Good</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="q{{ question_number }}_{{ course.course_code }}"
+                value="2"
+              />2 - Fair</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="q{{ question_number }}_{{ course.course_code }}"
+                value="1"
+              />1 - Wanting</label
+            >
+          </div>
+        </div>
+        {% endfor %}
+
+        <!-- Suggestions -->
+        <div class="question-box">
+          <label>Suggestions for improvement:</label>
+          <div class="suggestions">
+            <input
+              type="text"
+              name="suggestions_{{ course.course_code }}"
+              placeholder="Write your suggestion"
+            />
+          </div>
+        </div>
+        {% endfor %}
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary">Submit Feedback</button>
+      </div>
+    </form>
+  </body>
+</html>
