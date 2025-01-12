@@ -9,6 +9,7 @@ from docx.shared import Pt
 import os
 import matplotlib.pyplot as plt
 from io import BytesIO
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 app = Flask(__name__)
