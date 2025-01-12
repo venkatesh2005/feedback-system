@@ -202,7 +202,7 @@
               <td>
                 <!-- View Form -->
                 <a href="/feedback_form/{{ form._id }}" class="btn btn-primary btn-sm">View Form</a>
-
+              
                 <!-- Share Form Link -->
                 <button
                   class="btn btn-info btn-sm"
@@ -210,10 +210,13 @@
                 >
                   Share
                 </button>
-
+              
                 <!-- Edit Form -->
                 <a href="/edit_form/{{ form._id }}" class="btn btn-warning btn-sm">Edit</a>
-
+              
+                <!-- Generate Report -->
+                <a href="/download_report/{{ form._id }}" class="btn btn-success btn-sm">Generate Report</a>
+              
                 <!-- Delete Form -->
                 <form
                   action="/delete_form/{{ form._id }}"
@@ -224,6 +227,7 @@
                   <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                 </form>
               </td>
+              
             </tr>
             {% else %}
             <tr>
