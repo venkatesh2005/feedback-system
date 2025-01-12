@@ -179,6 +179,7 @@ def create_form():
         department = request.form['department']
         semester = request.form['semester']
         batch = request.form['batch']
+        students_strength = request.form['studentsStrength']  # Capture this field
 
         courses = []
         course_count = int(request.form['courseCount'])
@@ -201,6 +202,7 @@ def create_form():
                 'department': department,
                 'semester': semester,
                 'batch': batch,
+                'students_strength': students_strength,  # Store it in the database
                 'courses': courses,
             })
             flash("Form created successfully!", "success")
@@ -335,7 +337,7 @@ def view_report(form_id):
 
     feedback_data = list(feedback_collection.find({"form_id": form_id}))
 
-    student_count = len(feedback_data)
+    student_count = int(form_details.get("students_strength", 0))  # Fetch total student strength
     students_participated = len([f for f in feedback_data if f.get("feedback_data")])
 
     course_averages = {}
@@ -388,6 +390,59 @@ def view_report(form_id):
 
 @app.route('/edit_form/<form_id>', methods=['GET', 'POST'])
 def edit_form(form_id):
+    if 'role' not in session or session['role'] not in ['hod', 'admin']:
+        flash("Unauthorized access", "danger")
+        return redirect(url_for('login'))
+
+    form = forms_collection.find_one({"_id": form_id})
+    if not form:
+        flash("Form not found.", "danger")
+        return redirect(url_for('admin_dashboard' if session['role'] == 'admin' else 'hod_dashboard'))
+
+    if request.method == 'POST':
+        academic_year = request.form['academicYear']
+        department = request.form['department']
+        semester = int(request.form['semester'])
+        batch = request.form['batch']
+        students_strength = request.form['studentsStrength']  # Capture this field
+
+        courses = []
+        course_count = int(request.form['courseCount'])
+        for i in range(1, course_count + 1):
+            course_code = request.form.get(f'courseCode{i}')
+            course_title = request.form.get(f'courseTitle{i}')
+            staff_name = request.form.get(f'staffName{i}')
+            courses.append({
+                'course_code': course_code,
+                'course_name': course_title,
+                'staff_name': staff_name,
+            })
+
+        try:
+            forms_collection.update_one(
+                {"_id": form_id},
+                {
+                    "$set": {
+                        "academic_year": academic_year,
+                        "department": department,
+                        "semester": semester,
+                        "batch": batch,
+                        "students_strength": students_strength,  # Update it in the database
+                        "courses": courses,
+                    }
+                }
+            )
+            flash("Form updated successfully!", "success")
+        except Exception as e:
+            flash(f"Error updating form: {str(e)}", "danger")
+
+        if session['role'] == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        elif session['role'] == 'hod':
+            return redirect(url_for('hod_dashboard'))
+
+    return render_template('create_form.html', form=form, is_edit=True)
+
     # Ensure only authorized users (HOD or Admin) can edit
     if 'role' not in session or session['role'] not in ['hod', 'admin']:
         flash("Unauthorized access", "danger")
