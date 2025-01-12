@@ -22,9 +22,68 @@ client = MongoClient(MONGO_URI)
 db = client["feedback_form_db"]
 forms_collection = db["forms"]
 feedback_collection = db["feedback"]
+users_collection = db["users"]
 
+# Ensure default admin and HOD accounts exist
+if not users_collection.find_one({"username": "principal"}):
+    users_collection.insert_one({
+        "username": "principal",
+        "password": generate_password_hash("principal123"),
+        "role": "admin"
+    })
+
+if not users_collection.find_one({"username": "hod"}):
+    users_collection.insert_one({
+        "username": "hod",
+        "password": generate_password_hash("hod123"),
+        "role": "hod"
+    })
+
+# Default route
 @app.route('/')
+def home():
+    if 'role' in session:
+        if session['role'] == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        elif session['role'] == 'hod':
+            return redirect(url_for('hod_dashboard'))
+    return redirect(url_for('login'))
+
+# Login route
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user = users_collection.find_one({"username": username})
+
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = str(user['_id'])
+            session['username'] = user['username']
+            session['role'] = user['role']
+            if user['role'] == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            elif user['role'] == 'hod':
+                return redirect(url_for('hod_dashboard'))
+        else:
+            flash("Invalid username or password", "danger")
+
+    return render_template('login.html')
+
+# Logout route
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("Logged out successfully", "success")
+    return redirect(url_for('login'))
+
+# Admin dashboard (accessible by Principal)
+@app.route('/admin_dashboard')
 def admin_dashboard():
+    if 'role' not in session or session['role'] != 'admin':
+        flash("Unauthorized access", "danger")
+        return redirect(url_for('login'))
+
     academic_year = request.args.get('academicYear')
     department = request.args.get('department')
     semester = request.args.get('semester')
@@ -32,7 +91,6 @@ def admin_dashboard():
     page = int(request.args.get('page', 1))
     per_page = 10
 
-    # Build the query for filtering
     query = {}
     if academic_year:
         query['academic_year'] = {"$regex": academic_year, "$options": "i"}
@@ -43,12 +101,10 @@ def admin_dashboard():
     if batch:
         query['batch'] = {"$regex": batch, "$options": "i"}
 
-    # Fetch filtered forms and total forms count
     forms = list(forms_collection.find(query).skip((page - 1) * per_page).limit(per_page))
     total_forms = forms_collection.count_documents(query)
     total_pages = (total_forms + per_page - 1) // per_page
-
-    # Add the academic year based on semester
+# Add the academic year based on semester
     for form in forms:
         semester = int(form.get("semester", 0))  # Ensure semester is an integer
         if semester in [1, 2]:
@@ -61,18 +117,62 @@ def admin_dashboard():
             form["year"] = "Fourth Year"
         else:
             form["year"] = "Unknown Year"
-
-    # Render the dashboard template
     return render_template(
         'admin_dashboard.html',
+        str=str,
         forms=forms,
         total_pages=total_pages,
         current_page=page,
-        total_forms=total_forms  # Pass total_forms to the template
+        total_forms=total_forms
     )
+
+# HOD dashboard
+@app.route('/hod_dashboard')
+def hod_dashboard():
+    if 'role' not in session or session['role'] != 'hod':
+        flash("Unauthorized access", "danger")
+        return redirect(url_for('login'))
+
+    # Extract filters from query parameters
+    academic_year = request.args.get('academicYear', '').strip()
+    department = request.args.get('department', '').strip()
+    semester = request.args.get('semester', '').strip()
+    batch = request.args.get('batch', '').strip()
+
+    # Build dynamic query based on provided filters
+    query = {}
+    if academic_year:
+        query['academic_year'] = {"$regex": f"^{academic_year}", "$options": "i"}
+    if department:
+        query['department'] = {"$regex": department, "$options": "i"}
+    if semester:
+        query['semester'] = semester  # Exact match for semester
+    if batch:
+        query['batch'] = {"$regex": batch, "$options": "i"}
+
+    # Fetch forms based on the query
+    forms = list(forms_collection.find(query))
+
+    # Render the dashboard with all forms and the applied filters
+    return render_template(
+        'hod_dashboard.html',
+        forms=forms,
+        str=str,
+        filters={
+            'academicYear': academic_year,
+            'department': department,
+            'semester': semester,
+            'batch': batch
+        }
+    )
+
 
 @app.route('/create_form', methods=['GET', 'POST'])
 def create_form():
+    if 'role' not in session or session['role'] not in ['hod', 'admin']:
+        flash("Unauthorized access", "danger")
+        return redirect(url_for('login'))
+
     if request.method == 'POST':
         academic_year = request.form['academicYear']
         department = request.form['department']
@@ -106,10 +206,15 @@ def create_form():
         except Exception as e:
             flash(f"Error creating form: {str(e)}", "danger")
 
-        return redirect(url_for('admin_dashboard'))
+        # Redirect to the appropriate dashboard
+        if session['role'] == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        elif session['role'] == 'hod':
+            return redirect(url_for('hod_dashboard'))
 
     return render_template('create_form.html')
 
+# Feedback Form (accessible by anyone with the form link)
 @app.route('/feedback_form/<form_id>', methods=['GET', 'POST'])
 def feedback_form(form_id):
     form_details = forms_collection.find_one({"_id": form_id})
@@ -126,13 +231,14 @@ def feedback_form(form_id):
         semester_type=semester_type
     )
 
+# Submit Feedback
 @app.route('/submit_feedback', methods=['POST'])
 def submit_feedback():
     try:
         form_id = request.form.get('form_id')
         if not form_id:
             flash("Form ID is missing!", "danger")
-            return redirect(url_for('admin_dashboard'))
+            return redirect(url_for('hod_dashboard'))
 
         form_details = forms_collection.find_one({"_id": form_id})
         if not form_details:
@@ -159,13 +265,17 @@ def submit_feedback():
         feedback_collection.insert_one(feedback_document)
 
         flash("Feedback submitted successfully!", "success")
-        return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('hod_dashboard'))
     except Exception as e:
         flash(f"Error submitting feedback: {str(e)}", "danger")
-        return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('hod_dashboard'))
 
 @app.route('/view_report/<form_id>')
 def view_report(form_id):
+    if 'role' not in session or session['role'] != 'admin':
+        flash("Unauthorized access", "danger")
+        return redirect(url_for('login'))
+
     form_details = forms_collection.find_one({"_id": form_id})
     if not form_details:
         return "Form not found", 404
@@ -227,11 +337,77 @@ def view_report(form_id):
         faculty_reports=faculty_reports,
         semester_type=semester_type
     )
+
+@app.route('/edit_form/<form_id>', methods=['GET', 'POST'])
+def edit_form(form_id):
+    # Ensure only authorized users (HOD or Admin) can edit
+    if 'role' not in session or session['role'] not in ['hod', 'admin']:
+        flash("Unauthorized access", "danger")
+        return redirect(url_for('login'))
+
+    # Fetch the existing form from the database
+    form = forms_collection.find_one({"_id": form_id})
+    if not form:
+        flash("Form not found.", "danger")
+        return redirect(url_for('admin_dashboard' if session['role'] == 'admin' else 'hod_dashboard'))
+
+    if request.method == 'POST':
+        # Get updated form data from the request
+        academic_year = request.form['academicYear']
+        department = request.form['department']
+        semester = int(request.form['semester'])
+        batch = request.form['batch']
+
+        # Prepare the courses list
+        courses = []
+        course_count = int(request.form['courseCount'])
+        for i in range(1, course_count + 1):
+            course_code = request.form.get(f'courseCode{i}')
+            course_title = request.form.get(f'courseTitle{i}')
+            staff_name = request.form.get(f'staffName{i}')
+            courses.append({
+                'course_code': course_code,
+                'course_name': course_title,
+                'staff_name': staff_name,
+            })
+
+        # Update the form in the database
+        try:
+            forms_collection.update_one(
+                {"_id": form_id},
+                {
+                    "$set": {
+                        "academic_year": academic_year,
+                        "department": department,
+                        "semester": semester,
+                        "batch": batch,
+                        "courses": courses,
+                    }
+                }
+            )
+            flash("Form updated successfully!", "success")
+        except Exception as e:
+            flash(f"Error updating form: {str(e)}", "danger")
+
+        # Redirect to the appropriate dashboard
+        if session['role'] == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        elif session['role'] == 'hod':
+            return redirect(url_for('hod_dashboard'))
+
+    # Render the edit form page with the existing data
+    return render_template('create_form.html', form=form, is_edit=True)
+
 @app.route('/delete_form/<form_id>', methods=['POST'])
 def delete_form(form_id):
     """
     Deletes a feedback form and all associated feedback from the database.
+    Accessible by both HOD and Admin.
     """
+    if 'role' not in session or session['role'] not in ['hod', 'admin']:
+        flash("Unauthorized access", "danger")
+        return redirect(url_for('login'))
+
     try:
         # Delete the form from the forms collection
         result_form = forms_collection.delete_one({"_id": form_id})
@@ -241,13 +417,17 @@ def delete_form(form_id):
 
         # Check if the form existed and was deleted
         if result_form.deleted_count > 0:
-            flash(f"Form and associated feedback deleted successfully!", "success")
+            flash("Form and associated feedback deleted successfully!", "success")
         else:
-            flash(f"Form not found. No deletion occurred.", "danger")
+            flash("Form not found. No deletion occurred.", "danger")
     except Exception as e:
         flash(f"Error deleting form: {str(e)}", "danger")
 
-    return redirect(url_for('admin_dashboard'))
+    # Redirect to the appropriate dashboard based on the role
+    if session['role'] == 'admin':
+        return redirect(url_for('admin_dashboard'))
+    elif session['role'] == 'hod':
+        return redirect(url_for('hod_dashboard'))
 
 
 @app.route('/download_report/<form_id>')
