@@ -40,8 +40,9 @@
       }
 
       .btn-primary,
-      .btn-danger,
       .btn-info,
+      .btn-warning,
+      .btn-danger,
       .btn-secondary {
         margin-right: 5px;
       }
@@ -74,9 +75,43 @@
         background-color: #0056b3;
         color: white;
       }
+
+      @media (max-width: 768px) {
+        .filter-section .row {
+          flex-direction: column;
+        }
+
+        .filter-section input,
+        .filter-section select,
+        .filter-section button {
+          width: 100%;
+          margin-right: 0;
+        }
+
+        table {
+          font-size: 14px;
+        }
+
+        .btn {
+          margin-bottom: 5px;
+        }
+      }
     </style>
   </head>
   <body>
+    <!-- Top Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Admin Dashboard</a>
+        <button
+          class="btn btn-danger"
+          onclick="location.href='{{ url_for('logout') }}'"
+        >
+          Logout
+        </button>
+      </div>
+    </nav>
+
     <div class="container">
       <h1 class="text-center mb-4">Admin Dashboard</h1>
 
@@ -114,14 +149,11 @@
           <div class="col-md-2">
             <select name="semester" class="form-select">
               <option value="">Semester</option>
-              <option value="1" {% if request.args.get('semester') == "1" %}selected{% endif %}>1</option>
-              <option value="2" {% if request.args.get('semester') == "2" %}selected{% endif %}>2</option>
-              <option value="3" {% if request.args.get('semester') == "3" %}selected{% endif %}>3</option>
-              <option value="4" {% if request.args.get('semester') == "4" %}selected{% endif %}>4</option>
-              <option value="5" {% if request.args.get('semester') == "5" %}selected{% endif %}>5</option>
-              <option value="6" {% if request.args.get('semester') == "6" %}selected{% endif %}>6</option>
-              <option value="7" {% if request.args.get('semester') == "7" %}selected{% endif %}>7</option>
-              <option value="8" {% if request.args.get('semester') == "8" %}selected{% endif %}>8</option>
+              {% for i in range(1, 9) %}
+              <option value="{{ i }}" {% if request.args.get('semester') == str(i) %}selected{% endif %}>
+                {{ i }}
+              </option>
+              {% endfor %}
             </select>
           </div>
           <div class="col-md-2">
@@ -134,56 +166,73 @@
             />
           </div>
           <div class="col-md-1">
-            <button type="submit" class="btn btn-primary">Filter</button>
+            <button type="submit" class="btn btn-primary w-100">Filter</button>
           </div>
           <div class="col-md-1">
-            <a href="/" class="btn btn-secondary">Clear Filters</a>
+            <a href="/" class="btn btn-secondary w-100">Clear</a>
           </div>
         </form>
       </div>
 
       <!-- Forms Table -->
-      <table class="table table-striped">
-        <thead>
-          <tr>
-            <th>Form ID</th>
-            <th>Academic Year</th>
-            <th>Department</th>
-            <th>Year</th> <!-- New Column for Academic Year -->
-            <th>Semester</th>
-            <th>Batch</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for form in forms %}
-          <tr>
-            <td>{{ form._id }}</td>
-            <td>{{ form.academic_year }}</td>
-            <td>{{ form.department }}</td>
-            <td>{{ form.year }}</td> <!-- Dynamically calculated academic year -->
-            <td>{{ form.semester }}</td>
-            <td>{{ form.batch }}</td>
-            <td>
-              <a href="/feedback_form/{{ form._id }}" class="btn btn-primary">View Form</a>
-              <a href="/view_report/{{ form._id }}" class="btn btn-info">View Report</a>
-              <form
-                action="/delete_form/{{ form._id }}"
-                method="post"
-                style="display:inline;"
-                onsubmit="return confirm('Are you sure you want to delete this form?');"
-              >
-                <button type="submit" class="btn btn-danger">Delete</button>
-              </form>
-            </td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="7" class="text-center">No forms found.</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Form ID</th>
+              <th>Academic Year</th>
+              <th>Department</th>
+              <th>Year</th>
+              <th>Semester</th>
+              <th>Batch</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for form in forms %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ form._id }}</td>
+              <td>{{ form.academic_year }}</td>
+              <td>{{ form.department }}</td>
+              <td>{{ form.year }}</td>
+              <td>{{ form.semester }}</td>
+              <td>{{ form.batch }}</td>
+              <td>
+                <!-- View Form -->
+                <a href="/feedback_form/{{ form._id }}" class="btn btn-primary btn-sm">View Form</a>
+
+                <!-- Share Form Link -->
+                <button
+                  class="btn btn-info btn-sm"
+                  onclick="copyToClipboard('{{ url_for('feedback_form', form_id=form._id, _external=True) }}')"
+                >
+                  Share
+                </button>
+
+                <!-- Edit Form -->
+                <a href="/edit_form/{{ form._id }}" class="btn btn-warning btn-sm">Edit</a>
+
+                <!-- Delete Form -->
+                <form
+                  action="/delete_form/{{ form._id }}"
+                  method="post"
+                  style="display:inline;"
+                  onsubmit="return confirm('Are you sure you want to delete this form?');"
+                >
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="text-center">No forms found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
       <!-- Pagination -->
       <nav class="pagination">
@@ -197,5 +246,21 @@
         {% endfor %}
       </nav>
     </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Function to copy link to clipboard
+      function copyToClipboard(link) {
+        navigator.clipboard.writeText(link).then(
+          function () {
+            alert("Link copied to clipboard!");
+          },
+          function (err) {
+            alert("Failed to copy link: " + err);
+          }
+        );
+      }
+    </script>
   </body>
 </html>
