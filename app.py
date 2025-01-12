@@ -239,7 +239,49 @@ def submit_feedback():
         form_id = request.form.get('form_id')
         if not form_id:
             flash("Form ID is missing!", "danger")
-            return redirect(url_for('hod_dashboard'))
+            # Redirect back to the form with an error message
+            return redirect(request.referrer or url_for('home'))
+
+        form_details = forms_collection.find_one({"_id": form_id})
+        if not form_details:
+            flash("Feedback form not found.", "danger")
+            # Redirect back to the form with an error message
+            return redirect(request.referrer or url_for('home'))
+
+        feedback_data = []
+        for course in form_details["courses"]:
+            course_code = course["course_code"]
+            course_feedback = {
+                "course_code": course_code,
+                "feedback": {}
+            }
+            for i in range(1, 9):
+                question_key = f"q{i}_{course_code}"
+                course_feedback["feedback"][f"q{i}"] = request.form.get(question_key)
+            course_feedback["suggestions"] = request.form.get(f"suggestions_{course_code}")
+            feedback_data.append(course_feedback)
+
+        feedback_document = {
+            "form_id": form_id,
+            "feedback_data": feedback_data,
+        }
+        feedback_collection.insert_one(feedback_document)
+
+        # Redirect to the "Thank You" page
+        return redirect(url_for('thank_you', form_id=form_id))
+    except Exception as e:
+        # Log the exception for debugging
+        print(f"Error submitting feedback: {e}")
+
+        # Display a friendly error message and redirect back to the form
+        flash("An error occurred while submitting your feedback. Please try again.", "danger")
+        return redirect(request.referrer or url_for('home'))
+
+    try:
+        form_id = request.form.get('form_id')
+        if not form_id:
+            flash("Form ID is missing!", "danger")
+            return redirect(url_for('home'))
 
         form_details = forms_collection.find_one({"_id": form_id})
         if not form_details:
@@ -265,11 +307,16 @@ def submit_feedback():
         }
         feedback_collection.insert_one(feedback_document)
 
-        flash("Feedback submitted successfully!", "success")
-        return redirect(url_for('hod_dashboard'))
+        # Redirect to the "Thank You" page with form_id
+        return redirect(url_for('thank_you', form_id=form_id))
     except Exception as e:
         flash(f"Error submitting feedback: {str(e)}", "danger")
-        return redirect(url_for('hod_dashboard'))
+        return redirect(url_for('home'))
+
+@app.route('/thank_you/<form_id>')
+def thank_you(form_id):
+    return render_template('thank_you.html', form_id=form_id)
+
 
 @app.route('/view_report/<form_id>')
 def view_report(form_id):
@@ -623,4 +670,4 @@ def download_report(form_id):
     return send_file(file_path, as_attachment=True, download_name="Feedback_Report.docx")
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
