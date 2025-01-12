@@ -15,7 +15,10 @@ app = Flask(__name__)
 app.secret_key = "your_secret_key"
 
 # MongoDB connection
-client = MongoClient("mongodb+srv://venkat42005:djWfghShxTH464Pr@cluster0.lvdaz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+# Get the MongoDB URI from an environment variable
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")  # Use localhost as fallback for testing
+client = MongoClient(MONGO_URI)
+
 db = client["feedback_form_db"]
 forms_collection = db["forms"]
 feedback_collection = db["feedback"]
