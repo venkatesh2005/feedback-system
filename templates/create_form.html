@@ -195,6 +195,16 @@
           required
         />
 
+        <label for="studentsStrength">Students Strength</label>
+        <input
+          type="number"
+          id="studentsStrength"
+          name="studentsStrength"
+          placeholder="Enter the Number of Students Strength"
+          value="{{ form.students_strength if is_edit else '' }}"
+          required
+        />
+
         <div id="courses">
           {% if is_edit %}
           {% for course in form.courses %}
