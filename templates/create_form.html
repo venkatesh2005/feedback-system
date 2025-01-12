@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Create Feedback Form</title>
+    <title>{{ "Edit Feedback Form" if is_edit else "Create Feedback Form" }}</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
       rel="stylesheet"
@@ -67,7 +67,7 @@
       }
 
       .form-inline input {
-        width: calc(33.33% - 10px); /* Equal width for three input boxes */
+        width: calc(33.33% - 10px);
         margin-bottom: 0;
       }
 
@@ -86,6 +86,15 @@
 
       button:hover {
         background-color: #542e9d;
+      }
+
+      .remove-course-btn {
+        background-color: #e74c3c;
+        margin-top: 10px;
+      }
+
+      .remove-course-btn:hover {
+        background-color: #c0392b;
       }
 
       h3 {
@@ -147,14 +156,15 @@
   </head>
   <body>
     <div class="container">
-      <h1>Create Feedback Form</h1>
-      <form action="/create_form" method="POST">
+      <h1>{{ "Edit Feedback Form" if is_edit else "Create Feedback Form" }}</h1>
+      <form action="{{ url_for('edit_form', form_id=form._id) if is_edit else url_for('create_form') }}" method="POST">
         <label for="academicYear">Academic Year</label>
         <input
           type="text"
           id="academicYear"
           name="academicYear"
           placeholder="Enter Academic Year (e.g., 2023-2024)"
+          value="{{ form.academic_year if is_edit else '' }}"
           required
         />
 
@@ -164,19 +174,15 @@
           id="department"
           name="department"
           placeholder="Enter Department"
+          value="{{ form.department if is_edit else '' }}"
           required
         />
 
         <label for="semester">Semester</label>
         <select id="semester" name="semester" required>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-          <option value="6">6</option>
-          <option value="7">7</option>
-          <option value="8">8</option>
+          {% for i in range(1, 9) %}
+          <option value="{{ i }}" {% if is_edit and form.semester == i %}selected{% endif %}>{{ i }}</option>
+          {% endfor %}
         </select>
 
         <label for="batch">Batch</label>
@@ -185,11 +191,49 @@
           id="batch"
           name="batch"
           placeholder="Enter Batch (e.g., Batch A)"
+          value="{{ form.batch if is_edit else '' }}"
           required
         />
 
         <div id="courses">
-          <div class="form-section">
+          {% if is_edit %}
+          {% for course in form.courses %}
+          <div class="form-section" id="courseSection{{ loop.index }}">
+            <h3>Course {{ loop.index }}</h3>
+            <div class="form-inline">
+              <input
+                type="text"
+                name="courseCode{{ loop.index }}"
+                placeholder="Course Code"
+                value="{{ course.course_code }}"
+                required
+              />
+              <input
+                type="text"
+                name="courseTitle{{ loop.index }}"
+                placeholder="Course Title"
+                value="{{ course.course_name }}"
+                required
+              />
+              <input
+                type="text"
+                name="staffName{{ loop.index }}"
+                placeholder="Staff Name"
+                value="{{ course.staff_name }}"
+                required
+              />
+            </div>
+            <button
+              type="button"
+              class="remove-course-btn"
+              onclick="removeCourse('courseSection{{ loop.index }}')"
+            >
+              Remove Course
+            </button>
+          </div>
+          {% endfor %}
+          {% else %}
+          <div class="form-section" id="courseSection1">
             <h3>Course 1</h3>
             <div class="form-inline">
               <input
@@ -212,34 +256,88 @@
               />
             </div>
           </div>
+          {% endif %}
         </div>
         <button type="button" id="addCourse">Add Another Course</button>
-        <input type="hidden" id="courseCount" name="courseCount" value="1" />
+        <input
+          type="hidden"
+          id="courseCount"
+          name="courseCount"
+          value="{{ form.courses | length if is_edit else 1 }}"
+        />
         <div class="form-actions">
           <button type="reset">Reset Form</button>
-          <button type="submit">Create Form</button>
+          <button type="submit">{{ "Update Form" if is_edit else "Create Form" }}</button>
         </div>
       </form>
     </div>
 
     <script>
-      let courseCount = 1;
+      let courseCount = {{ form.courses | length if is_edit else 1 }};
+    
+      // Add Course Logic
       document.getElementById("addCourse").addEventListener("click", () => {
         courseCount++;
         const coursesDiv = document.getElementById("courses");
         const newCourseHTML = `
-          <div class="form-section">
+          <div class="form-section" id="courseSection${courseCount}">
             <h3>Course ${courseCount}</h3>
             <div class="form-inline">
               <input type="text" name="courseCode${courseCount}" placeholder="Course Code" required />
               <input type="text" name="courseTitle${courseCount}" placeholder="Course Title" required />
               <input type="text" name="staffName${courseCount}" placeholder="Staff Name" required />
             </div>
+            <button
+              type="button"
+              class="remove-course-btn"
+              onclick="removeCourse('courseSection${courseCount}')"
+            >
+              Remove Course
+            </button>
           </div>
         `;
         coursesDiv.insertAdjacentHTML("beforeend", newCourseHTML);
         document.getElementById("courseCount").value = courseCount;
       });
+    
+      // Remove Course Logic
+      function removeCourse(courseId) {
+        const coursesDiv = document.getElementById("courses");
+        const sections = coursesDiv.querySelectorAll(".form-section");
+    
+        // Prevent removing the last course
+        if (sections.length <= 1) {
+          alert("At least one course must be present.");
+          return;
+        }
+    
+        // Remove the selected course section
+        const courseElement = document.getElementById(courseId);
+        if (courseElement) {
+          courseElement.remove();
+        }
+    
+        // Update course numbers dynamically
+        courseCount = sections.length - 1; // Account for the removed course
+        const remainingSections = coursesDiv.querySelectorAll(".form-section");
+    
+        remainingSections.forEach((section, index) => {
+          const currentIndex = index + 1;
+          section.id = `courseSection${currentIndex}`;
+          section.querySelector("h3").innerText = `Course ${currentIndex}`;
+          section.querySelectorAll("input").forEach((input) => {
+            const nameAttr = input.name.replace(/\d+$/, currentIndex);
+            input.name = nameAttr;
+          });
+          section.querySelector(".remove-course-btn").setAttribute(
+            "onclick",
+            `removeCourse('courseSection${currentIndex}')`
+          );
+        });
+    
+        document.getElementById("courseCount").value = remainingSections.length;
+      }
     </script>
+    
   </body>
 </html>
