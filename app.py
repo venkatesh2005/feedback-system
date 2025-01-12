@@ -544,8 +544,9 @@ def download_report(form_id):
     semester = int(form_details.get("semester", 1))
     semester_type = "Odd Semester" if semester % 2 != 0 else "Even Semester"
 
+    # Fetch students strength from form details
+    students_strength = form_details.get("students_strength", 0)  # Ensure a default value
     feedback_data = list(feedback_collection.find({"form_id": form_id}))
-    student_count = len(feedback_data)
     students_participated = len([f for f in feedback_data if f.get("feedback_data")])
 
     course_averages = {}
@@ -608,16 +609,17 @@ def download_report(form_id):
     run = title_paragraph.add_run("FACULTY PERFORMANCE – STUDENT’S FEEDBACK\nSUMMARY REPORT\n")
     apply_font_style(title_paragraph, font_size=12, bold=True)
     title_paragraph.add_run(f"Academic Year {form_details['academic_year']} ({semester_type})\n").bold = True
-    apply_font_style(title_paragraph, font_size=12,bold=True)
+    apply_font_style(title_paragraph, font_size=12, bold=True)
+
     # Add details in table format
-    table = document.add_table(rows=4, cols=2)
+    table = document.add_table(rows=5, cols=2)  # Adjust rows to include students strength
     table.style = "Table Grid"
 
     details = [
         ("Department", form_details['department']),
         ("Year and Semester", form_details['batch']),
-        ("Students strength", str(student_count)),
-        ("Number of students participated in the feedback collection", str(students_participated))
+        ("Students Strength", str(students_strength)),  # Add students strength
+        ("Number of Students Participated", str(students_participated)),
     ]
 
     for row, (key, value) in enumerate(details):
@@ -723,6 +725,7 @@ def download_report(form_id):
     document.save(file_path)
 
     return send_file(file_path, as_attachment=True, download_name="Feedback_Report.docx")
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
