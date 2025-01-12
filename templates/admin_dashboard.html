@@ -214,8 +214,10 @@
                 <!-- Edit Form -->
                 <a href="/edit_form/{{ form._id }}" class="btn btn-warning btn-sm">Edit</a>
               
-                <!-- Generate Report -->
-                <a href="/download_report/{{ form._id }}" class="btn btn-success btn-sm">Generate Report</a>
+                <!-- View Report Button -->
+                <a href="{{ url_for('view_report', form_id=form['_id']) }}" class="btn btn-primary btn-sm">
+                  View Report
+              </a>
               
                 <!-- Delete Form -->
                 <form
