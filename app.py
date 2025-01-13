@@ -50,48 +50,63 @@ def home():
             return redirect(url_for('hod_dashboard'))
     return redirect(url_for('login'))
 
-# Login route
+# Login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form['username'].strip()
+        password = request.form['password'].strip()
         user = users_collection.find_one({"username": username})
 
         if user and check_password_hash(user['password'], password):
             session['user_id'] = str(user['_id'])
             session['username'] = user['username']
             session['role'] = user['role']
+
+            flash(f"Welcome, {user['role'].capitalize()}!", "success")
             if user['role'] == 'admin':
                 return redirect(url_for('admin_dashboard'))
             elif user['role'] == 'hod':
                 return redirect(url_for('hod_dashboard'))
         else:
             flash("Invalid username or password", "danger")
-
     return render_template('login.html')
 
-# Logout route
+# Logout
 @app.route('/logout')
 def logout():
     session.clear()
-    flash("Logged out successfully", "success")
+    flash("Logged out successfully.", "success")
     return redirect(url_for('login'))
+
+@app.route('/some_protected_route')
+def protected_route():
+    if 'role' not in session:
+        # Flash only the "Unauthorized access" message
+        flash("Unauthorized access", "danger")
+        return redirect(url_for('login'))
+
+
 
 # Admin dashboard (accessible by Principal)
 @app.route('/admin_dashboard')
 def admin_dashboard():
+    """
+    Admin Dashboard: Displays forms and allows filtering, pagination, and management actions.
+    """
     if 'role' not in session or session['role'] != 'admin':
-        flash("Unauthorized access", "danger")
+        flash("Unauthorized access.", "danger")
         return redirect(url_for('login'))
 
-    academic_year = request.args.get('academicYear')
-    department = request.args.get('department')
-    semester = request.args.get('semester')
-    batch = request.args.get('batch')
+    # Get filters from query parameters
+    academic_year = request.args.get('academicYear', '').strip()
+    department = request.args.get('department', '').strip()
+    semester = request.args.get('semester', '').strip()
+    batch = request.args.get('batch', '').strip()
     page = int(request.args.get('page', 1))
-    per_page = 10
+    per_page = 10  # Default number of forms per page
 
+    # Build the query for filtering
     query = {}
     if academic_year:
         query['academic_year'] = {"$regex": academic_year, "$options": "i"}
@@ -102,118 +117,194 @@ def admin_dashboard():
     if batch:
         query['batch'] = {"$regex": batch, "$options": "i"}
 
-    forms = list(forms_collection.find(query).skip((page - 1) * per_page).limit(per_page))
-    total_forms = forms_collection.count_documents(query)
-    total_pages = (total_forms + per_page - 1) // per_page
-# Add the academic year based on semester
-    for form in forms:
-        semester = int(form.get("semester", 0))  # Ensure semester is an integer
-        if semester in [1, 2]:
+    # Fetch and filter forms
+    filtered_forms = list(forms_collection.find(query).sort("academic_year", 1))  # Sort by academic year
+    total_forms = len(filtered_forms)
+
+    is_filtered = any([academic_year, department, semester, batch])
+
+    # Apply pagination only if no filters are applied
+    if not is_filtered:
+        total_pages = (total_forms + per_page - 1) // per_page  # Calculate total pages
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_forms = filtered_forms[start:end]
+    else:
+        paginated_forms = filtered_forms
+        total_pages = 1
+
+    # Enrich form data for rendering
+    for idx, form in enumerate(paginated_forms, start=(page - 1) * per_page + 1):
+        form['serial_no'] = idx
+        semester_value = int(form.get("semester", 0))
+        if semester_value in [1, 2]:
             form["year"] = "First Year"
-        elif semester in [3, 4]:
+        elif semester_value in [3, 4]:
             form["year"] = "Second Year"
-        elif semester in [5, 6]:
+        elif semester_value in [5, 6]:
             form["year"] = "Third Year"
-        elif semester in [7, 8]:
+        elif semester_value in [7, 8]:
             form["year"] = "Fourth Year"
         else:
             form["year"] = "Unknown Year"
+
+    # Flash a message if no forms are found
+    if not paginated_forms and not is_filtered:
+        flash("No forms found.", "info")
+
+    # Render the admin dashboard template
     return render_template(
         'admin_dashboard.html',
-        str=str,
-        forms=forms,
+        forms=paginated_forms,
         total_pages=total_pages,
         current_page=page,
-        total_forms=total_forms
-    )
-
-# HOD dashboard
-@app.route('/hod_dashboard')
-def hod_dashboard():
-    if 'role' not in session or session['role'] != 'hod':
-        flash("Unauthorized access", "danger")
-        return redirect(url_for('login'))
-
-    # Extract filters from query parameters
-    academic_year = request.args.get('academicYear', '').strip()
-    department = request.args.get('department', '').strip()
-    semester = request.args.get('semester', '').strip()
-    batch = request.args.get('batch', '').strip()
-
-    # Build dynamic query based on provided filters
-    query = {}
-    if academic_year:
-        query['academic_year'] = {"$regex": f"^{academic_year}", "$options": "i"}
-    if department:
-        query['department'] = {"$regex": department, "$options": "i"}
-    if semester:
-        query['semester'] = semester  # Exact match for semester
-    if batch:
-        query['batch'] = {"$regex": batch, "$options": "i"}
-
-    # Fetch forms based on the query
-    forms = list(forms_collection.find(query))
-
-    # Render the dashboard with all forms and the applied filters
-    return render_template(
-        'hod_dashboard.html',
-        forms=forms,
-        str=str,
+        total_forms=total_forms,
         filters={
             'academicYear': academic_year,
             'department': department,
             'semester': semester,
             'batch': batch
-        }
+        },
+        is_filtered=is_filtered,
+        str=str
     )
 
+# HOD dashboard
+@app.route('/hod_dashboard')
+def hod_dashboard():
+    """
+    HOD Dashboard: Displays forms and allows filtering, pagination, and management actions.
+    """
+    if 'role' not in session or session['role'] != 'hod':
+        flash("Unauthorized access.", "danger")
+        return redirect(url_for('login'))
+
+    # Get filters from query parameters
+    academic_year = request.args.get('academicYear', '').strip()
+    department = request.args.get('department', '').strip()
+    semester = request.args.get('semester', '').strip()
+    batch = request.args.get('batch', '').strip()
+    page = int(request.args.get('page', 1))
+    per_page = 10  # Default number of forms per page
+
+    # Build the query for filtering
+    query = {}
+    if academic_year:
+        query['academic_year'] = {"$regex": academic_year, "$options": "i"}
+    if department:
+        query['department'] = {"$regex": department, "$options": "i"}
+    if semester:
+        query['semester'] = semester
+    if batch:
+        query['batch'] = {"$regex": batch, "$options": "i"}
+
+    # Fetch and filter forms
+    filtered_forms = list(forms_collection.find(query).sort("academic_year", 1))  # Sort by academic year
+    total_forms = len(filtered_forms)
+
+    is_filtered = any([academic_year, department, semester, batch])
+
+    # Apply pagination only if no filters are applied
+    if not is_filtered:
+        total_pages = (total_forms + per_page - 1) // per_page  # Calculate total pages
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_forms = filtered_forms[start:end]
+    else:
+        paginated_forms = filtered_forms
+        total_pages = 1
+
+    # Enrich form data for rendering
+    for idx, form in enumerate(paginated_forms, start=(page - 1) * per_page + 1):
+        form['serial_no'] = idx
+        semester_value = int(form.get("semester", 0))
+        if semester_value in [1, 2]:
+            form["year"] = "First Year"
+        elif semester_value in [3, 4]:
+            form["year"] = "Second Year"
+        elif semester_value in [5, 6]:
+            form["year"] = "Third Year"
+        elif semester_value in [7, 8]:
+            form["year"] = "Fourth Year"
+        else:
+            form["year"] = "Unknown Year"
+
+    # Flash a message if no forms are found
+    if not paginated_forms and not is_filtered:
+        flash("No forms found.", "info")
+
+    # Render the HOD dashboard template
+    return render_template(
+        'hod_dashboard.html',
+        forms=paginated_forms,
+        total_pages=total_pages,
+        current_page=page,
+        total_forms=total_forms,
+        filters={
+            'academicYear': academic_year,
+            'department': department,
+            'semester': semester,
+            'batch': batch
+        },
+        is_filtered=is_filtered,
+        str=str
+    )
 
 @app.route('/create_form', methods=['GET', 'POST'])
 def create_form():
+    # Check for authorized roles
     if 'role' not in session or session['role'] not in ['hod', 'admin']:
         flash("Unauthorized access", "danger")
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        academic_year = request.form['academicYear']
-        department = request.form['department']
-        semester = request.form['semester']
-        batch = request.form['batch']
-        students_strength = request.form['studentsStrength']  # Capture this field
-
-        courses = []
-        course_count = int(request.form['courseCount'])
-        for i in range(1, course_count + 1):
-            course_code = request.form[f'courseCode{i}']
-            course_title = request.form[f'courseTitle{i}']
-            staff_name = request.form[f'staffName{i}']
-            courses.append({
-                'course_code': course_code,
-                'course_name': course_title,
-                'staff_name': staff_name,
-            })
-
-        form_id = str(uuid.uuid4())
-
         try:
+            # Get data from the form
+            academic_year = request.form['academicYear']
+            department_dropdown = request.form.get('departmentDropdown', '')
+            department_custom = request.form.get('department', '')
+
+            # Determine the final department value
+            department = department_custom if department_custom else department_dropdown
+
+            semester = request.form['semester']
+            batch = request.form['batch']
+            students_strength = request.form['studentsStrength']
+
+            courses = []
+            course_count = int(request.form['courseCount'])
+            for i in range(1, course_count + 1):
+                course_code = request.form[f'courseCode{i}']
+                course_title = request.form[f'courseTitle{i}']
+                staff_name = request.form[f'staffName{i}']
+                courses.append({
+                    'course_code': course_code,
+                    'course_name': course_title,
+                    'staff_name': staff_name,
+                })
+
+            form_id = str(uuid.uuid4())  # Generate a unique form ID
+
+            # Insert the form data into the database
             forms_collection.insert_one({
                 '_id': form_id,
                 'academic_year': academic_year,
                 'department': department,
                 'semester': semester,
                 'batch': batch,
-                'students_strength': students_strength,  # Store it in the database
+                'students_strength': students_strength,
                 'courses': courses,
             })
             flash("Form created successfully!", "success")
+
+            # Redirect to the appropriate dashboard
+            if session['role'] == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            elif session['role'] == 'hod':
+                return redirect(url_for('hod_dashboard'))
+
         except Exception as e:
             flash(f"Error creating form: {str(e)}", "danger")
-
-        # Redirect to the appropriate dashboard
-        if session['role'] == 'admin':
-            return redirect(url_for('admin_dashboard'))
-        elif session['role'] == 'hod':
-            return redirect(url_for('hod_dashboard'))
 
     return render_template('create_form.html')
 
@@ -390,35 +481,59 @@ def view_report(form_id):
 
 @app.route('/edit_form/<form_id>', methods=['GET', 'POST'])
 def edit_form(form_id):
-    if 'role' not in session or session['role'] not in ['hod', 'admin']:
-        flash("Unauthorized access", "danger")
+    """
+    Handles editing a feedback form.
+    Accessible by users with 'admin' or 'hod' roles.
+    """
+    if 'role' not in session or session['role'] not in ['admin', 'hod']:
+        flash("Unauthorized access.", "danger")
         return redirect(url_for('login'))
 
+    # Fetch the form to edit
     form = forms_collection.find_one({"_id": form_id})
     if not form:
         flash("Form not found.", "danger")
-        return redirect(url_for('admin_dashboard' if session['role'] == 'admin' else 'hod_dashboard'))
+        return redirect(url_for('hod_dashboard') if session['role'] == 'hod' else url_for('admin_dashboard'))
+
+    current_page = request.args.get('page', 1)
 
     if request.method == 'POST':
-        academic_year = request.form['academicYear']
-        department = request.form['department']
-        semester = int(request.form['semester'])
-        batch = request.form['batch']
-        students_strength = request.form['studentsStrength']  # Capture this field
-
-        courses = []
-        course_count = int(request.form['courseCount'])
-        for i in range(1, course_count + 1):
-            course_code = request.form.get(f'courseCode{i}')
-            course_title = request.form.get(f'courseTitle{i}')
-            staff_name = request.form.get(f'staffName{i}')
-            courses.append({
-                'course_code': course_code,
-                'course_name': course_title,
-                'staff_name': staff_name,
-            })
-
         try:
+            # Update form details
+            academic_year = request.form['academicYear']
+            department = request.form.get('department', '').strip()
+            semester = request.form['semester']
+            batch = request.form['batch']
+            students_strength = request.form['studentsStrength']
+            course_count = int(request.form['courseCount'])
+
+            # Validate inputs
+            if not semester.isdigit() or int(semester) not in range(1, 9):
+                flash("Invalid semester. Please enter a value between 1 and 8.", "danger")
+                return redirect(url_for('edit_form', form_id=form_id, page=current_page))
+
+            if not students_strength.isdigit() or int(students_strength) <= 0:
+                flash("Invalid student strength. Please enter a positive number.", "danger")
+                return redirect(url_for('edit_form', form_id=form_id, page=current_page))
+
+            # Prepare courses data
+            courses = []
+            for i in range(1, course_count + 1):
+                course_code = request.form.get(f'courseCode{i}', '').strip()
+                course_title = request.form.get(f'courseTitle{i}', '').strip()
+                staff_name = request.form.get(f'staffName{i}', '').strip()
+
+                if not course_code or not course_title or not staff_name:
+                    flash(f"Course {i} details are incomplete. Please fill in all fields.", "danger")
+                    return redirect(url_for('edit_form', form_id=form_id, page=current_page))
+
+                courses.append({
+                    'course_code': course_code,
+                    'course_name': course_title,
+                    'staff_name': staff_name,
+                })
+
+            # Update the form in the database
             forms_collection.update_one(
                 {"_id": form_id},
                 {
@@ -427,7 +542,7 @@ def edit_form(form_id):
                         "department": department,
                         "semester": semester,
                         "batch": batch,
-                        "students_strength": students_strength,  # Update it in the database
+                        "students_strength": students_strength,
                         "courses": courses,
                     }
                 }
@@ -436,102 +551,36 @@ def edit_form(form_id):
         except Exception as e:
             flash(f"Error updating form: {str(e)}", "danger")
 
-        if session['role'] == 'admin':
-            return redirect(url_for('admin_dashboard'))
-        elif session['role'] == 'hod':
-            return redirect(url_for('hod_dashboard'))
+        # Redirect to the correct dashboard
+        return redirect(url_for('hod_dashboard', page=current_page) if session['role'] == 'hod' else url_for('admin_dashboard', page=current_page))
 
-    return render_template('create_form.html', form=form, is_edit=True)
+    return render_template('create_form.html', form=form, is_edit=True, page=current_page)
 
-    # Ensure only authorized users (HOD or Admin) can edit
-    if 'role' not in session or session['role'] not in ['hod', 'admin']:
-        flash("Unauthorized access", "danger")
-        return redirect(url_for('login'))
-
-    # Fetch the existing form from the database
-    form = forms_collection.find_one({"_id": form_id})
-    if not form:
-        flash("Form not found.", "danger")
-        return redirect(url_for('admin_dashboard' if session['role'] == 'admin' else 'hod_dashboard'))
-
-    if request.method == 'POST':
-        # Get updated form data from the request
-        academic_year = request.form['academicYear']
-        department = request.form['department']
-        semester = int(request.form['semester'])
-        batch = request.form['batch']
-
-        # Prepare the courses list
-        courses = []
-        course_count = int(request.form['courseCount'])
-        for i in range(1, course_count + 1):
-            course_code = request.form.get(f'courseCode{i}')
-            course_title = request.form.get(f'courseTitle{i}')
-            staff_name = request.form.get(f'staffName{i}')
-            courses.append({
-                'course_code': course_code,
-                'course_name': course_title,
-                'staff_name': staff_name,
-            })
-
-        # Update the form in the database
-        try:
-            forms_collection.update_one(
-                {"_id": form_id},
-                {
-                    "$set": {
-                        "academic_year": academic_year,
-                        "department": department,
-                        "semester": semester,
-                        "batch": batch,
-                        "courses": courses,
-                    }
-                }
-            )
-            flash("Form updated successfully!", "success")
-        except Exception as e:
-            flash(f"Error updating form: {str(e)}", "danger")
-
-        # Redirect to the appropriate dashboard
-        if session['role'] == 'admin':
-            return redirect(url_for('admin_dashboard'))
-        elif session['role'] == 'hod':
-            return redirect(url_for('hod_dashboard'))
-
-    # Render the edit form page with the existing data
-    return render_template('create_form.html', form=form, is_edit=True)
 
 @app.route('/delete_form/<form_id>', methods=['POST'])
 def delete_form(form_id):
     """
-    Deletes a feedback form and all associated feedback from the database.
-    Accessible by both HOD and Admin.
+    Handles deleting a feedback form.
+    Accessible by users with 'admin' or 'hod' roles.
     """
-    if 'role' not in session or session['role'] not in ['hod', 'admin']:
-        flash("Unauthorized access", "danger")
+    if 'role' not in session or session['role'] not in ['admin', 'hod']:
+        flash("Unauthorized access.", "danger")
         return redirect(url_for('login'))
 
+    current_page = request.args.get('page', 1)
+
     try:
-        # Delete the form from the forms collection
-        result_form = forms_collection.delete_one({"_id": form_id})
-
-        # Delete all related feedback from the feedback collection
-        result_feedback = feedback_collection.delete_many({"form_id": form_id})
-
-        # Check if the form existed and was deleted
-        if result_form.deleted_count > 0:
-            flash("Form and associated feedback deleted successfully!", "success")
+        # Attempt to delete the form
+        result = forms_collection.delete_one({"_id": form_id})
+        if result.deleted_count > 0:
+            flash("Form deleted successfully!", "success")
         else:
             flash("Form not found. No deletion occurred.", "danger")
     except Exception as e:
         flash(f"Error deleting form: {str(e)}", "danger")
 
-    # Redirect to the appropriate dashboard based on the role
-    if session['role'] == 'admin':
-        return redirect(url_for('admin_dashboard'))
-    elif session['role'] == 'hod':
-        return redirect(url_for('hod_dashboard'))
-
+    # Redirect to the correct dashboard
+    return redirect(url_for('hod_dashboard', page=current_page) if session['role'] == 'hod' else url_for('admin_dashboard', page=current_page))
 
 @app.route('/download_report/<form_id>')
 def download_report(form_id):
@@ -612,7 +661,7 @@ def download_report(form_id):
     apply_font_style(title_paragraph, font_size=12, bold=True)
 
     # Add details in table format
-    table = document.add_table(rows=5, cols=2)  # Adjust rows to include students strength
+    table = document.add_table(rows=4, cols=2)  # Adjust rows to include students strength
     table.style = "Table Grid"
 
     details = [
@@ -725,7 +774,6 @@ def download_report(form_id):
     document.save(file_path)
 
     return send_file(file_path, as_attachment=True, download_name="Feedback_Report.docx")
-
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
