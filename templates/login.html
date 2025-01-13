@@ -1,38 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-4">
-                <h3 class="text-center">Login</h3>
-                <form method="POST" action="{{ url_for('login') }}">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="username" name="username" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Login</button>
-                </form>
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                <div class="mt-3">
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                {% endwith %}
-            </div>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #f7f9fc;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .login-container {
+        max-width: 400px;
+        width: 100%;
+        padding: 30px;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .login-header h2 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #343a40;
+        margin-bottom: 20px;
+        font-family: "Merriweather", serif;
+      }
+
+      .form-control {
+        border-radius: 0;
+        font-size: 14px;
+        border: 1px solid #ced4da;
+        transition: border-color 0.3s ease;
+      }
+
+      .form-control:focus {
+        border-color: #6c63ff;
+        box-shadow: none;
+      }
+
+      .input-group {
+        margin-bottom: 20px;
+      }
+
+      .input-group .form-control {
+        border-left: none;
+      }
+
+      .input-group .input-group-text {
+        background-color: #f7f9fc;
+        border: 1px solid #ced4da;
+        border-right: none;
+        color: #6c63ff;
+      }
+
+      .btn-login {
+        background-color: #6c63ff;
+        border: none;
+        color: white;
+        border-radius: 10px;
+        font-weight: bold;
+        padding: 10px;
+        width: 100%;
+        transition: all 0.3s ease;
+      }
+
+      .btn-login:hover {
+        background-color: #5548cc;
+      }
+
+      .alert {
+        margin-bottom: 20px;
+        padding: 10px;
+        border-radius: 10px;
+        font-size: 14px;
+      }
+
+      .alert-success {
+        background-color: #d1e7dd;
+        color: #0f5132;
+        border: 1px solid #badbcc;
+      }
+
+      .alert-danger {
+        background-color: #f8d7da;
+        color: #842029;
+        border: 1px solid #f5c2c7;
+      }
+
+      .login-footer {
+        margin-top: 15px;
+        font-size: 14px;
+        color: #6c757d;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-container">
+      <!-- Header -->
+      <div class="login-header">
+        <h2>CIET FEEDBACK PORTAL</h2>
+      </div>
+
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div
+        class="alert alert-{{ 'success' if category == 'success' else 'danger' }}"
+      >
+        {{ message }}
+      </div>
+      {% endfor %} {% endif %} {% endwith %}
+
+      <!-- Login Form -->
+      <form action="{{ url_for('login') }}" method="POST">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="fas fa-user"></i>
+          </span>
+          <input
+            type="text"
+            name="username"
+            class="form-control"
+            placeholder="Username"
+            required
+          />
         </div>
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="fas fa-lock"></i>
+          </span>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="form-control"
+            placeholder="Password"
+            required
+          />
+          <span class="input-group-text" onclick="togglePassword()">
+            <i id="toggle-icon" class="fas fa-eye"></i>
+          </span>
+        </div>
+        <button type="submit" class="btn btn-login">Login</button>
+      </form>
+
+      <!-- Footer -->
+      <div class="login-footer">
+        <p>
+          &copy; 2025 Developed by
+          <a href="https://www.linkedin.com/in/venkateshm05/" target="_blank">
+            Venkatesh M
+          </a>
+        </p>
+      </div>
     </div>
-</body>
+
+    <script>
+      function togglePassword() {
+        const passwordField = document.getElementById("password");
+        const toggleIcon = document.getElementById("toggle-icon");
+        if (passwordField.type === "password") {
+          passwordField.type = "text";
+          toggleIcon.classList.remove("fa-eye");
+          toggleIcon.classList.add("fa-eye-slash");
+        } else {
+          passwordField.type = "password";
+          toggleIcon.classList.remove("fa-eye-slash");
+          toggleIcon.classList.add("fa-eye");
+        }
+      }
+    </script>
+  </body>
 </html>
