@@ -15,7 +15,7 @@
         margin: 0;
         padding: 0;
       }
-
+    
       .container {
         max-width: 800px;
         margin: 40px auto;
@@ -24,7 +24,7 @@
         border-radius: 10px;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
       }
-
+    
       h1 {
         font-size: 24px;
         font-weight: 700;
@@ -32,7 +32,7 @@
         margin-bottom: 20px;
         color: #333;
       }
-
+    
       label {
         font-size: 16px;
         font-weight: 500;
@@ -40,7 +40,7 @@
         display: block;
         color: #555;
       }
-
+    
       input,
       select {
         width: 100%;
@@ -53,11 +53,15 @@
         transition: border-color 0.3s ease;
       }
 
+      input{
+        width: 97% !important;
+      }
+    
       input:focus,
       select:focus {
         border-color: #673ab7;
       }
-
+    
       .form-inline {
         display: flex;
         gap: 15px;
@@ -65,45 +69,72 @@
         align-items: center;
         margin-bottom: 20px;
       }
-
-      .form-inline input {
-        width: calc(33.33% - 10px);
-        margin-bottom: 0;
-      }
-
+    
+      /* Button Styles */
       button {
         display: inline-block;
-        background-color: #673ab7;
-        color: white;
-        padding: 10px 15px;
+        padding: 8px 15px;
         border: none;
         border-radius: 5px;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 600;
         cursor: pointer;
-        transition: background-color 0.3s ease;
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
-
+    
       button:hover {
-        background-color: #542e9d;
+        color: white;
       }
-
+    
+      /* Add Another Course Button */
+      #addCourse {
+        background-color: #28a745;
+        color: white;
+      }
+    
+      #addCourse:hover {
+        background-color: #218838;
+      }
+    
+      /* Reset Form Button */
+      .form-actions button[type="reset"] {
+        background-color: #ffc107;
+        color: #333;
+      }
+    
+      .form-actions button[type="reset"]:hover {
+        background-color: #e0a800;
+      }
+    
+      /* Create/Update Form Button */
+      .form-actions button[type="submit"] {
+        background-color: #007bff;
+        color: white;
+      }
+    
+      .form-actions button[type="submit"]:hover {
+        background-color: #0056b3;
+      }
+    
+      /* Remove Course Button */
       .remove-course-btn {
         background-color: #e74c3c;
+        color: white;
         margin-top: 10px;
+        font-size: 14px;
       }
-
+    
       .remove-course-btn:hover {
         background-color: #c0392b;
       }
-
+    
       h3 {
         font-size: 20px;
         font-weight: 500;
         color: #333;
         margin-bottom: 10px;
       }
-
+    
       .form-section {
         border: 1px solid #ddd;
         border-radius: 8px;
@@ -111,53 +142,55 @@
         margin-bottom: 20px;
         background-color: #f9f9f9;
       }
-
+    
       .form-section:nth-child(even) {
         background-color: #f0f0f0;
       }
-
+    
       .form-actions {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 10px;
+        margin-top: 20px;
       }
-
-      .form-actions button:last-child {
-        background-color: #4caf50;
-      }
-
-      .form-actions button:last-child:hover {
-        background-color: #388e3c;
-      }
-
+    
       @media (max-width: 768px) {
         .container {
           padding: 15px;
         }
-
+    
         h1 {
           font-size: 20px;
         }
-
+    
         .form-inline {
           flex-direction: column;
         }
-
-        .form-inline input {
-          width: 100%;
+    
+        .form-actions {
+          flex-direction: column;
+          gap: 10px;
         }
-
+    
         button {
           font-size: 14px;
           padding: 8px 12px;
         }
       }
     </style>
+    
   </head>
   <body>
     <div class="container">
       <h1>{{ "Edit Feedback Form" if is_edit else "Create Feedback Form" }}</h1>
-      <form action="{{ url_for('edit_form', form_id=form._id) if is_edit else url_for('create_form') }}" method="POST">
+      <form
+        action="{{ url_for('edit_form', form_id=form._id, page=request.args.get('page', 1)) if is_edit else url_for('create_form') }}"
+        method="POST"
+      >
+        <!-- Maintain page number -->
+        <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}" />
+
         <label for="academicYear">Academic Year</label>
         <input
           type="text"
@@ -169,13 +202,30 @@
         />
 
         <label for="department">Department</label>
+        <select id="departmentDropdown" name="departmentDropdown" onchange="handleCustomDepartment(this)" required>
+          <option value="">Select Department</option>
+          <option value="Artificial Intelligence & Data Science" {% if is_edit and form.department == "Artificial Intelligence & Data Science" %}selected{% endif %}>Artificial Intelligence & Data Science</option>
+          <option value="Civil Engineering" {% if is_edit and form.department == "Civil Engineering" %}selected{% endif %}>Civil Engineering</option>
+          <option value="Computer Science & Engineering" {% if is_edit and form.department == "Computer Science & Engineering" %}selected{% endif %}>Computer Science & Engineering</option>
+          <option value="Computer Science and Engineering (Artificial Intelligence & Machine Learning)" {% if is_edit and form.department == "Computer Science and Engineering (Artificial Intelligence & Machine Learning)" %}selected{% endif %}>Computer Science and Engineering (Artificial Intelligence & Machine Learning)</option>
+          <option value="Computer Science and Engineering (Cyber Security)" {% if is_edit and form.department == "Computer Science and Engineering (Cyber Security)" %}selected{% endif %}>Computer Science and Engineering (Cyber Security)</option>
+          <option value="Electrical & Electronics Engineering" {% if is_edit and form.department == "Electrical & Electronics Engineering" %}selected{% endif %}>Electrical & Electronics Engineering</option>
+          <option value="Electronics & Communication Engineering" {% if is_edit and form.department == "Electronics & Communication Engineering" %}selected{% endif %}>Electronics & Communication Engineering</option>
+          <option value="Electronics Engineering (VLSI Design and Technology)" {% if is_edit and form.department == "Electronics Engineering (VLSI Design and Technology)" %}selected{% endif %}>Electronics Engineering (VLSI Design and Technology)</option>
+          <option value="Information Technology" {% if is_edit and form.department == "Information Technology" %}selected{% endif %}>Information Technology</option>
+          <option value="Mechanical Engineering" {% if is_edit and form.department == "Mechanical Engineering" %}selected{% endif %}>Mechanical Engineering</option>
+          <option value="Mechatronics Engineering" {% if is_edit and form.department == "Mechatronics Engineering" %}selected{% endif %}>Mechatronics Engineering</option>
+          <option value="Other" {% if is_edit and form.department not in predefined_departments %}selected{% endif %}>Other (Specify Below)</option>
+        </select>
+
+        <!-- Custom Department Input -->
         <input
           type="text"
-          id="department"
+          id="customDepartmentInput"
           name="department"
-          placeholder="Enter Department"
-          value="{{ form.department if is_edit else '' }}"
-          required
+          placeholder="Enter Department (if Other)"
+          value="{{ form.department if is_edit and form.department not in predefined_departments else '' }}"
+          style="display: {% if is_edit and form.department not in predefined_departments %}block{% else %}none{% endif %};"
         />
 
         <label for="semester">Semester</label>
@@ -284,8 +334,7 @@
 
     <script>
       let courseCount = {{ form.courses | length if is_edit else 1 }};
-    
-      // Add Course Logic
+
       document.getElementById("addCourse").addEventListener("click", () => {
         courseCount++;
         const coursesDiv = document.getElementById("courses");
@@ -309,28 +358,22 @@
         coursesDiv.insertAdjacentHTML("beforeend", newCourseHTML);
         document.getElementById("courseCount").value = courseCount;
       });
-    
-      // Remove Course Logic
+
       function removeCourse(courseId) {
         const coursesDiv = document.getElementById("courses");
         const sections = coursesDiv.querySelectorAll(".form-section");
-    
-        // Prevent removing the last course
+
         if (sections.length <= 1) {
           alert("At least one course must be present.");
           return;
         }
-    
-        // Remove the selected course section
+
         const courseElement = document.getElementById(courseId);
         if (courseElement) {
           courseElement.remove();
         }
-    
-        // Update course numbers dynamically
-        courseCount = sections.length - 1; // Account for the removed course
+
         const remainingSections = coursesDiv.querySelectorAll(".form-section");
-    
         remainingSections.forEach((section, index) => {
           const currentIndex = index + 1;
           section.id = `courseSection${currentIndex}`;
@@ -344,10 +387,22 @@
             `removeCourse('courseSection${currentIndex}')`
           );
         });
-    
-        document.getElementById("courseCount").value = remainingSections.length;
+
+        courseCount = remainingSections.length;
+        document.getElementById("courseCount").value = courseCount;
+      }
+
+      function handleCustomDepartment(selectElement) {
+        const customInput = document.getElementById("customDepartmentInput");
+        if (selectElement.value === "Other") {
+          customInput.style.display = "block";
+          customInput.required = true;
+        } else {
+          customInput.style.display = "none";
+          customInput.required = false;
+          customInput.value = "";
+        }
       }
     </script>
-    
   </body>
 </html>
