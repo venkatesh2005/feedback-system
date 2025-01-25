@@ -115,7 +115,7 @@
     <div class="container">
       <!-- Dashboard Header -->
       <div class="dashboard-header">
-        <h1>HOD Dashboard</h1>
+        <h1>{{ department }} HOD Dashboard</h1>
       </div>
 
       <!-- Create New Form Button -->
@@ -146,11 +146,12 @@
             <input
               type="text"
               name="department"
-              placeholder="Department"
               class="form-control"
-              value="{{ filters.department }}"
+              value="{{ session['department'] }}"
+              readonly
             />
           </div>
+          
           <div class="col-md-2">
             <select name="semester" class="form-select">
               <option value="">Semester</option>
