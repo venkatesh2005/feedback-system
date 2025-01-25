@@ -1,25 +1,19 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 from pymongo import MongoClient
+from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
-from pymongo import MongoClient
-from docx import Document  # Import python-docx
+from docx import Document
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import Pt
 import os
 import matplotlib.pyplot as plt
 from io import BytesIO
-from werkzeug.security import generate_password_hash, check_password_hash
-
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
 
 # MongoDB connection
-# Get the MongoDB URI from an environment variable
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")  # Use localhost as fallback for testing
-client = MongoClient(MONGO_URI)
-
+client = MongoClient("mongodb+srv://venkat42005:djWfghShxTH464Pr@cluster0.lvdaz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 db = client["feedback_form_db"]
 forms_collection = db["forms"]
 feedback_collection = db["feedback"]
@@ -33,12 +27,40 @@ if not users_collection.find_one({"username": "principal"}):
         "role": "admin"
     })
 
-if not users_collection.find_one({"username": "hod"}):
-    users_collection.insert_one({
-        "username": "hod",
-        "password": generate_password_hash("hod123"),
-        "role": "hod"
-    })
+from werkzeug.security import generate_password_hash
+
+# List of departments
+departments = [
+    "Artificial Intelligence & Data Science",
+    "Civil Engineering",
+    "Computer Science & Engineering",
+    "Computer Science and Engineering (Artificial Intelligence & Machine Learning)",
+    "Computer Science and Engineering (Cyber Security)",
+    "Electrical & Electronics Engineering",
+    "Electronics & Communication Engineering",
+    "Electronics Engineering (VLSI Design and Technology)",
+    "Information Technology",
+    "Mechanical Engineering",
+    "Mechatronics Engineering",
+]
+
+# Insert HOD accounts for each department
+for department in departments:
+    # Generate a unique username for the HOD
+    username = f"hod_{department.split()[0].lower()}"  # Example: hod_ai, hod_civil, etc.
+    
+    # Check if the HOD account already exists
+    if not users_collection.find_one({"username": username}):
+        users_collection.insert_one({
+            "username": username,
+            "password": generate_password_hash(f"{username}123"),  # Password: hod_<department_prefix>123
+            "role": "hod",
+            "department": department
+        })
+        print(f"HOD account created for department: {department}")
+    else:
+        print(f"HOD account already exists for department: {department}")
+
 
 # Default route
 @app.route('/')
@@ -62,6 +84,8 @@ def login():
             session['user_id'] = str(user['_id'])
             session['username'] = user['username']
             session['role'] = user['role']
+            if user['role'] == 'hod':
+                session['department'] = user.get('department', '')  # Store HOD department
 
             flash(f"Welcome, {user['role'].capitalize()}!", "success")
             if user['role'] == 'admin':
@@ -172,41 +196,41 @@ def admin_dashboard():
 # HOD dashboard
 @app.route('/hod_dashboard')
 def hod_dashboard():
-    """
-    HOD Dashboard: Displays forms and allows filtering, pagination, and management actions.
-    """
     if 'role' not in session or session['role'] != 'hod':
         flash("Unauthorized access.", "danger")
         return redirect(url_for('login'))
 
-    # Get filters from query parameters
+    # Retrieve department from the session
+    department = session.get('department', '')
+    if not department:
+        flash("Your account is not associated with any department.", "danger")
+        return redirect(url_for('logout'))
+
+    # Filters
     academic_year = request.args.get('academicYear', '').strip()
-    department = request.args.get('department', '').strip()
     semester = request.args.get('semester', '').strip()
     batch = request.args.get('batch', '').strip()
     page = int(request.args.get('page', 1))
-    per_page = 10  # Default number of forms per page
+    per_page = 10
 
-    # Build the query for filtering
-    query = {}
+    # Query forms related to the logged-in HOD's department
+    query = {'department': department}
     if academic_year:
         query['academic_year'] = {"$regex": academic_year, "$options": "i"}
-    if department:
-        query['department'] = {"$regex": department, "$options": "i"}
     if semester:
         query['semester'] = semester
     if batch:
         query['batch'] = {"$regex": batch, "$options": "i"}
 
-    # Fetch and filter forms
-    filtered_forms = list(forms_collection.find(query).sort("academic_year", 1))  # Sort by academic year
+    # Fetch filtered forms
+    filtered_forms = list(forms_collection.find(query).sort("academic_year", 1))
     total_forms = len(filtered_forms)
 
-    is_filtered = any([academic_year, department, semester, batch])
+    is_filtered = any([academic_year, semester, batch])
 
-    # Apply pagination only if no filters are applied
+    # Apply pagination if no filters are applied
     if not is_filtered:
-        total_pages = (total_forms + per_page - 1) // per_page  # Calculate total pages
+        total_pages = (total_forms + per_page - 1) // per_page
         start = (page - 1) * per_page
         end = start + per_page
         paginated_forms = filtered_forms[start:end]
@@ -214,7 +238,6 @@ def hod_dashboard():
         paginated_forms = filtered_forms
         total_pages = 1
 
-    # Enrich form data for rendering
     for idx, form in enumerate(paginated_forms, start=(page - 1) * per_page + 1):
         form['serial_no'] = idx
         semester_value = int(form.get("semester", 0))
@@ -229,20 +252,15 @@ def hod_dashboard():
         else:
             form["year"] = "Unknown Year"
 
-    # Flash a message if no forms are found
-    if not paginated_forms and not is_filtered:
-        flash("No forms found.", "info")
-
-    # Render the HOD dashboard template
     return render_template(
         'hod_dashboard.html',
         forms=paginated_forms,
         total_pages=total_pages,
         current_page=page,
         total_forms=total_forms,
+        department=department,  # Pass department to the template
         filters={
             'academicYear': academic_year,
-            'department': department,
             'semester': semester,
             'batch': batch
         },
@@ -252,24 +270,32 @@ def hod_dashboard():
 
 @app.route('/create_form', methods=['GET', 'POST'])
 def create_form():
-    # Check for authorized roles
     if 'role' not in session or session['role'] not in ['hod', 'admin']:
         flash("Unauthorized access", "danger")
         return redirect(url_for('login'))
 
+    # Determine the department based on the user's role
+    department = session.get('department', '') if session['role'] == 'hod' else None
+
     if request.method == 'POST':
         try:
-            # Get data from the form
             academic_year = request.form['academicYear']
-            department_dropdown = request.form.get('departmentDropdown', '')
-            department_custom = request.form.get('department', '')
-
-            # Determine the final department value
-            department = department_custom if department_custom else department_dropdown
-
             semester = request.form['semester']
             batch = request.form['batch']
             students_strength = request.form['studentsStrength']
+
+            # Ensure the department is assigned based on the role
+            if session['role'] == 'hod':
+                # HOD can only create forms for their department
+                department = session.get('department', '')
+            else:
+                # Admin can select any department
+                department = request.form['department']
+
+            # Validate that department is assigned
+            if not department:
+                flash("Department not assigned. Cannot create form.", "danger")
+                return redirect(url_for('create_form'))
 
             courses = []
             course_count = int(request.form['courseCount'])
@@ -283,13 +309,11 @@ def create_form():
                     'staff_name': staff_name,
                 })
 
-            form_id = str(uuid.uuid4())  # Generate a unique form ID
-
-            # Insert the form data into the database
+            form_id = str(uuid.uuid4())
             forms_collection.insert_one({
                 '_id': form_id,
                 'academic_year': academic_year,
-                'department': department,
+                'department': department,  # Restrict department to the HOD's or admin's selection
                 'semester': semester,
                 'batch': batch,
                 'students_strength': students_strength,
@@ -306,7 +330,7 @@ def create_form():
         except Exception as e:
             flash(f"Error creating form: {str(e)}", "danger")
 
-    return render_template('create_form.html')
+    return render_template('create_form.html', department=department, role=session['role'])
 
 # Feedback Form (accessible by anyone with the form link)
 @app.route('/feedback_form/<form_id>', methods=['GET', 'POST'])
