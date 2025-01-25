@@ -202,6 +202,8 @@
         />
 
         <label for="department">Department</label>
+        {% if role == 'admin' %}
+        <!-- Principal can select any department -->
         <select id="departmentDropdown" name="departmentDropdown" onchange="handleCustomDepartment(this)" required>
           <option value="">Select Department</option>
           <option value="Artificial Intelligence & Data Science" {% if is_edit and form.department == "Artificial Intelligence & Data Science" %}selected{% endif %}>Artificial Intelligence & Data Science</option>
@@ -217,6 +219,18 @@
           <option value="Mechatronics Engineering" {% if is_edit and form.department == "Mechatronics Engineering" %}selected{% endif %}>Mechatronics Engineering</option>
           <option value="Other" {% if is_edit and form.department not in predefined_departments %}selected{% endif %}>Other (Specify Below)</option>
         </select>
+        {% else %}
+        <!-- HOD can only see their department -->
+        <input
+          type="text"
+          id="department"
+          name="department"
+          class="form-control"
+          value="{{ department }}"
+          readonly
+        />
+        {% endif %}
+        
 
         <!-- Custom Department Input -->
         <input
