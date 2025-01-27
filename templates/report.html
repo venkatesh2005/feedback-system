@@ -21,18 +21,15 @@
   </head>
   <body>
     <div class="container my-5">
-        <a href="{{ url_for('download_report', form_id=form_details['_id']) }}" class="btn btn-primary mt-4">
-            Download Report
-          </a>
-          
+      <a href="{{ url_for('download_report', form_id=form_details['_id']) }}" class="btn btn-primary mt-4">
+        Download Report
+      </a>
       <!-- Header Image -->
       <img src="{{ header_image }}" alt="Header Image" class="header-image" />
 
       <h3 class="text-center">FACULTY PERFORMANCE – STUDENT’S FEEDBACK</h3>
       <h3 class="text-center">SUMMARY REPORT</h3>
-      <h3 class="text-center">
-        Academic Year {{ form_details.academic_year }} ({{ semester_type }})
-      </h3>
+      <h3 class="text-center">Academic Year {{ form_details.academic_year }} ({{ semester_type }})</h3>
 
       <!-- Overall Details Table -->
       <table class="table table-bordered mt-4">
@@ -144,17 +141,11 @@
       <!-- Individual Faculty Reports -->
       {% for faculty in faculty_reports %}
       <hr />
-      <!-- Header Image for Individual Section -->
       <img src="{{ header_image }}" alt="Header Image" class="header-image" />
-
       <h3 class="text-center">FACULTY PERFORMANCE – STUDENT’S FEEDBACK</h3>
       <h3 class="text-center">SUMMARY REPORT</h3>
-      <h3 class="text-center">
-        Academic Year {{ form_details.academic_year }} ({{ semester_type }})
-      </h3>
+      <h3 class="text-center">Academic Year {{ form_details.academic_year }} ({{ semester_type }})</h3>
 
-      
-      <!-- Faculty Details Table -->
       <table class="table table-bordered mt-4">
         <tr>
           <th>Name of the Faculty</th>
@@ -174,7 +165,6 @@
         </tr>
       </table>
 
-      <!-- Observations Table -->
       <h4 class="text-center">Observations</h4>
       <table class="table table-bordered mt-4">
         <thead>
@@ -185,17 +175,17 @@
           </tr>
         </thead>
         <tbody>
-          {% set particulars = [ "Explicitly spells out the learning objectives
-          of the course, various chapters, and evaluation pattern", "Coverage
-          and completion of the syllabus", "Course material / class notes
-          given", "Gives assignment / homework regularly and monitors them
-          properly", "Is punctual to the class and engages for the entire hour",
-          "Presents subject matter on the board / PPTs, etc., neatly in a format
-          readable by all", "Provides feedback about the progress of the
-          students and motivates them by giving tips and advice", "Encourages
-          the students to actively participate in the class activities (through
-          discussions, question answers, brainstorming, etc.)" ] %} {% for
-          index, mean in faculty.question_means %}
+          {% set particulars = [
+            "Explicitly spells out the learning objectives of the course, various chapters, and evaluation pattern",
+            "Coverage and completion of the syllabus",
+            "Course material / class notes given",
+            "Gives assignment / homework regularly and monitors them properly",
+            "Is punctual to the class and engages for the entire hour",
+            "Presents subject matter on the board / PPTs, etc., neatly in a format readable by all",
+            "Provides feedback about the progress of the students and motivates them by giving tips and advice",
+            "Encourages the students to actively participate in the class activities (through discussions, question answers, brainstorming, etc.)"
+          ] %}
+          {% for index, mean in faculty.question_means %}
           <tr>
             <td>{{ index }}</td>
             <td>{{ particulars[index - 1] }}</td>
@@ -206,21 +196,81 @@
       </table>
 
       <p><strong>Total Students:</strong> {{ students_participated }}</p>
-      <p>
-        <strong>Overall Mean:</strong>
-        {{ faculty.question_means | sum(attribute=1) | round(2) }}
-      </p>
+      <p><strong>Overall Mean:</strong> {{ faculty.question_means | sum(attribute=1) | round(2) }}</p>
 
-      <!-- Suggestions -->
       <h5>Suggestions:</h5>
       <ul>
         {% for suggestion in faculty.suggestions %}
         <li>{{ suggestion }}</li>
         {% endfor %}
       </ul>
-
-      <p><strong>Principal</strong></p>
       {% endfor %}
+
+      <!-- Lab Reports Section -->
+      {% for lab in lab_reports %}
+      <hr />
+      <img src="{{ header_image }}" alt="Header Image" class="header-image" />
+      <h3 class="text-center">FACULTY PERFORMANCE – STUDENT’S FEEDBACK</h3>
+      <h3 class="text-center">LABORATORY COURSE</h3>
+      <h3 class="text-center">Academic Year {{ form_details.academic_year }} ({{ semester_type }})</h3>
+
+      <table class="table table-bordered mt-4">
+        <tr>
+          <th>Name of the Faculty</th>
+          <td>{{ lab.lab_instructors }}</td>
+        </tr>
+        <tr>
+          <th>Designation / Department</th>
+          <td>{{ form_details.department }}</td>
+        </tr>
+        <tr>
+          <th>Course Code & Title</th>
+          <td>{{ lab.lab_code }} - {{ lab.lab_name }}</td>
+        </tr>
+        <tr>
+          <th>Class & Semester</th>
+          <td>{{ form_details.batch }}</td>
+        </tr>
+      </table>
+
+      <h4 class="text-center">Observations</h4>
+      <table class="table table-bordered mt-4">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Particulars</th>
+            <th>Individual Mean</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set lab_particulars = [
+            "Does the faculty explain the theoretical concepts and lab instructions related to the experiments clearly?",
+            "Does the faculty evaluate observation and record notebooks upon completion of every lab session?",
+            "Does the faculty clarify doubts, solve problems, and encourage active participation during the lab?",
+            "Are the lab equipment/systems, and tools in ready-to-use condition?"
+          ] %}
+          {% for index, mean in lab.question_means %}
+          <tr>
+            <td>{{ index }}</td>
+            <td>{{ lab_particulars[index - 1] }}</td>
+            <td>{{ mean | round(2) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <p><strong>Total Students:</strong> {{ students_participated }}</p>
+      <p><strong>Overall Mean:</strong> {{ lab.question_means | sum(attribute=1) | round(2) }}</p>
+
+      <h5>Suggestions:</h5>
+      <ul>
+        {% for suggestion in lab.suggestions %}
+        <li>{{ suggestion }}</li>
+        {% endfor %}
+      </ul>
+      {% endfor %}
+
+      <p class="text-center"><strong>Principal</strong></p>
     </div>
   </body>
 </html>
