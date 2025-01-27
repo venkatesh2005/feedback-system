@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FeedBack Form</title>
+    <title>Feedback Form</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
       rel="stylesheet"
@@ -13,12 +13,6 @@
       rel="stylesheet"
     />
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
       body {
         font-family: "Roboto", sans-serif;
         background-color: #f1f3f4;
@@ -61,6 +55,17 @@
       .info p {
         font-size: 14px;
         margin: 4px 0;
+      }
+
+      .section-title {
+        background-color: #673ab7;
+        color: white;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 16px;
+        font-size: 18px;
+        font-weight: bold;
       }
 
       .question-box {
@@ -117,36 +122,6 @@
         font-size: 14px;
         color: #555;
       }
-
-      @media (max-width: 768px) {
-        .header h1 {
-          font-size: 18px;
-        }
-
-        .header h3 {
-          font-size: 14px;
-        }
-
-        .info p {
-          font-size: 13px;
-        }
-
-        .question-box label {
-          font-size: 14px;
-        }
-
-        .options label {
-          font-size: 12px;
-        }
-
-        .suggestions input[type="text"] {
-          font-size: 13px;
-        }
-
-        .footer {
-          font-size: 12px;
-        }
-      }
     </style>
   </head>
   <body>
@@ -157,7 +132,7 @@
 
         <!-- Header Section -->
         <div class="header">
-          <h1>Faculty Performance - Student's Feedback</h1>
+          <h1>Faculty and Lab Performance - Feedback Form</h1>
           <h3>
             {{ form_details.department }} - {{ form_details.batch }}<br />
             Academic Year {{ form_details.academic_year }} ({{ "Odd Semester" if
@@ -165,81 +140,154 @@
           </h3>
         </div>
 
-        <!-- Loop through each course -->
+        <!-- Theory Feedback Section -->
+        <div class="section-title">Theory Feedback</div>
         {% for course in form_details.courses %}
         <div class="info">
           <p>
-            <strong>Course:</strong> {{ course.course_code }} - {{
-            course.course_name }}
+            <strong>Course:</strong> {{ course.course_code }} - {{ course.course_name }}
           </p>
           <p><strong>Faculty:</strong> {{ course.staff_name }}</p>
         </div>
 
-        <!-- Questions -->
         {% for question_number in range(1, 9) %}
         <div class="question-box">
           <label>
-            {{ question_number }}. {{ [ "Explicitly spells out the learning
-            objectives of the course, various chapters, and evaluation pattern",
-            "Coverage and completion of the syllabus", "Course material / class
-            notes given", "Gives assignment / homework regularly and monitors
-            them properly", "Is punctual to the class and engages for the entire
-            hour", "Presents subject matter on the board / PPTs, etc., neatly in
-            a format readable by all", "Provides feedback about the progress of
-            the students and motivates them by giving tips and advice",
-            "Encourages the students to actively participate in the class
-            activities (through discussions / question answers / brainstorming /
-            etc.)" ][question_number - 1] }}
+            {{ question_number }}. {{ [
+              "Explicitly spells out the learning objectives of the course, various chapters, and evaluation pattern",
+              "Coverage and completion of the syllabus",
+              "Course material / class notes given",
+              "Gives assignment / homework regularly and monitors them properly",
+              "Is punctual to the class and engages for the entire hour",
+              "Presents subject matter on the board / PPTs, etc., neatly in a format readable by all",
+              "Provides feedback about the progress of the students and motivates them by giving tips and advice",
+              "Encourages the students to actively participate in the class activities (through discussions, question answers, brainstorming, etc.)"
+            ][question_number - 1] }}
             <span class="required">*</span>
           </label>
           <div class="options">
-            <label
-              ><input
+            <label>
+              <input
                 type="radio"
                 name="q{{ question_number }}_{{ course.course_code }}"
                 value="5"
                 required
-              />5 - Excellent</label
-            >
-            <label
-              ><input
+              />5 - Excellent
+            </label>
+            <label>
+              <input
                 type="radio"
                 name="q{{ question_number }}_{{ course.course_code }}"
                 value="4"
-              />4 - Very Good</label
-            >
-            <label
-              ><input
+              />4 - Very Good
+            </label>
+            <label>
+              <input
                 type="radio"
                 name="q{{ question_number }}_{{ course.course_code }}"
                 value="3"
-              />3 - Good</label
-            >
-            <label
-              ><input
+              />3 - Good
+            </label>
+            <label>
+              <input
                 type="radio"
                 name="q{{ question_number }}_{{ course.course_code }}"
                 value="2"
-              />2 - Fair</label
-            >
-            <label
-              ><input
+              />2 - Fair
+            </label>
+            <label>
+              <input
                 type="radio"
                 name="q{{ question_number }}_{{ course.course_code }}"
                 value="1"
-              />1 - Wanting</label
-            >
+              />1 - Wanting
+            </label>
           </div>
         </div>
         {% endfor %}
 
         <!-- Suggestions -->
         <div class="question-box">
-          <label>Suggestions for improvement:</label>
+          <label>Suggestions for Improvement:</label>
           <div class="suggestions">
             <input
               type="text"
               name="suggestions_{{ course.course_code }}"
+              placeholder="Write your suggestion"
+            />
+          </div>
+        </div>
+        {% endfor %}
+
+        <!-- Lab Feedback Section -->
+        <div class="section-title">Lab Feedback</div>
+        {% for lab in form_details.labs %}
+        <div class="info">
+          <p>
+            <strong>Lab:</strong> {{ lab.lab_code }} - {{ lab.lab_name }}
+          </p>
+          <p><strong>Lab Instructor(s):</strong> {{ lab.lab_instructors }}</p>
+        </div>
+
+        {% for question_number in range(1, 5) %}
+        <div class="question-box">
+          <label>
+            {{ question_number }}. {{ [
+              "Lab objectives and outcomes were clearly explained",
+              "Sufficient resources and equipment were available for experiments",
+              "Lab instructor provided clear instructions and guidance",
+              "Lab sessions were well-organized and conducted smoothly"
+            ][question_number - 1] }}
+            <span class="required">*</span>
+          </label>
+          <div class="options">
+            <label>
+              <input
+                type="radio"
+                name="lab_q{{ question_number }}_{{ lab.lab_code }}"
+                value="5"
+                required
+              />5 - Excellent
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="lab_q{{ question_number }}_{{ lab.lab_code }}"
+                value="4"
+              />4 - Very Good
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="lab_q{{ question_number }}_{{ lab.lab_code }}"
+                value="3"
+              />3 - Good
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="lab_q{{ question_number }}_{{ lab.lab_code }}"
+                value="2"
+              />2 - Fair
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="lab_q{{ question_number }}_{{ lab.lab_code }}"
+                value="1"
+              />1 - Wanting
+            </label>
+          </div>
+        </div>
+        {% endfor %}
+
+        <!-- Lab Suggestions -->
+        <div class="question-box">
+          <label>Suggestions for Lab Improvement:</label>
+          <div class="suggestions">
+            <input
+              type="text"
+              name="lab_suggestions_{{ lab.lab_code }}"
               placeholder="Write your suggestion"
             />
           </div>
