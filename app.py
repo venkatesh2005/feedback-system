@@ -10,8 +10,9 @@ from docx.shared import Pt
 import matplotlib.pyplot as plt
 from io import BytesIO
 
+from flask import make_response
 app = Flask(__name__)
-app.secret_key = "your_secret_key"
+app.secret_key = "Venkat@2005"
 
 # MongoDB connection
 client = MongoClient("mongodb+srv://venkat42005:djWfghShxTH464Pr@cluster0.lvdaz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
@@ -506,8 +507,8 @@ def submit_feedback():
             }
             for i in range(1, 9):
                 question_key = f"q{i}_{course_code}"
-                course_feedback["feedback"][f"q{i}"] = request.form.get(question_key)
-            course_feedback["suggestions"] = request.form.get(f"suggestions_{course_code}")
+                course_feedback["feedback"][f"q{i}"] = int(request.form.get(question_key, 0))
+            course_feedback["suggestions"] = request.form.get(f"suggestions_{course_code}", "").strip()
             feedback_data.append(course_feedback)
 
         # Handle lab feedback
@@ -520,8 +521,8 @@ def submit_feedback():
             }
             for i in range(1, 5):
                 question_key = f"lab_q{i}_{lab_code}"
-                lab_feedback["feedback"][f"lab_q{i}"] = request.form.get(question_key)
-            lab_feedback["suggestions"] = request.form.get(f"lab_suggestions_{lab_code}")
+                lab_feedback["feedback"][f"lab_q{i}"] = int(request.form.get(question_key, 0))
+            lab_feedback["suggestions"] = request.form.get(f"lab_suggestions_{lab_code}", "").strip()
             lab_feedback_data.append(lab_feedback)
 
         # Insert feedback into the database
@@ -532,7 +533,7 @@ def submit_feedback():
         })
 
         # Set a cookie to track submission
-        response = make_response(redirect(url_for('thank_you', form_id=form_id)))
+        response = make_response(redirect(url_for('thank_you', form_id=form_id, new="true")))
         response.set_cookie(f"submitted_{form_id}", "true", max_age=60*60*24*365)  # Expire in 1 year
         flash("Feedback submitted successfully!", "success")
         return response
@@ -544,7 +545,22 @@ def submit_feedback():
 
 @app.route('/thank_you/<form_id>')
 def thank_you(form_id):
-    return render_template('thank_you.html', form_id=form_id)
+    """Displays a thank you message immediately after submitting.
+    If the user refreshes, it still shows the thank you message.
+    If the user tries to access the feedback form again and resubmit, show "Already Submitted."
+    """
+    already_submitted = request.cookies.get(f"submitted_{form_id}") == "true"
+
+    # Check if this is the first visit after submission
+    first_visit = request.args.get("new", "false") == "true"
+
+    return render_template(
+        'thank_you.html',
+        form_id=form_id,
+        already_submitted=already_submitted,
+        first_visit=first_visit
+    )
+
 
 
 @app.route('/view_report/<form_id>')
