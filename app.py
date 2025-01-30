@@ -455,13 +455,15 @@ def hod_dashboard():
 # Feedback Form (accessible by anyone with the form link)
 @app.route('/feedback_form/<form_id>', methods=['GET', 'POST'])
 def feedback_form(form_id):
+    # Check if the user has already submitted feedback using cookies
+    if request.cookies.get(f"submitted_{form_id}"):
+        return redirect(url_for('thank_you', form_id=form_id))
+
+    # Fetch the form details
     form_details = forms_collection.find_one({"_id": form_id})
     if not form_details:
         flash("Feedback form not found.", "danger")
         return "Form not found", 404
-
-    # Debug to ensure labs are present
-    print(form_details)  # Check the structure of form_details
 
     semester = int(form_details.get("semester", 1))
     semester_type = "Odd Semester" if semester % 2 != 0 else "Even Semester"
@@ -473,32 +475,36 @@ def feedback_form(form_id):
     )
 
 # Submit Feedback
+from flask import make_response
+
 @app.route('/submit_feedback', methods=['POST'])
 def submit_feedback():
     try:
-        # Retrieve the form ID from the submitted form
         form_id = request.form.get('form_id')
         if not form_id:
             flash("Form ID is missing!", "danger")
             return redirect(request.referrer or url_for('home'))
 
-        # Fetch the form details from the database
+        # Check if user has already submitted using cookies
+        if request.cookies.get(f"submitted_{form_id}"):
+            flash("You have already submitted feedback for this form. Multiple submissions are not allowed.", "danger")
+            return redirect(url_for('thank_you', form_id=form_id))
+
+        # Fetch form details
         form_details = forms_collection.find_one({"_id": form_id})
         if not form_details:
             flash("Feedback form not found.", "danger")
             return redirect(request.referrer or url_for('home'))
 
-        # Prepare feedback data for theory courses
+        # Prepare feedback data
         feedback_data = []
-
-        # Handle course feedback
         for course in form_details.get("courses", []):
             course_code = course["course_code"]
             course_feedback = {
                 "course_code": course_code,
                 "feedback": {}
             }
-            for i in range(1, 9):  # Iterate through 8 theory questions
+            for i in range(1, 9):
                 question_key = f"q{i}_{course_code}"
                 course_feedback["feedback"][f"q{i}"] = request.form.get(question_key)
             course_feedback["suggestions"] = request.form.get(f"suggestions_{course_code}")
@@ -512,30 +518,27 @@ def submit_feedback():
                 "lab_code": lab_code,
                 "feedback": {}
             }
-            for i in range(1, 5):  # Iterate through 4 lab-specific questions
+            for i in range(1, 5):
                 question_key = f"lab_q{i}_{lab_code}"
                 lab_feedback["feedback"][f"lab_q{i}"] = request.form.get(question_key)
             lab_feedback["suggestions"] = request.form.get(f"lab_suggestions_{lab_code}")
             lab_feedback_data.append(lab_feedback)
 
-        # Prepare the document for insertion into the feedback collection
-        feedback_document = {
+        # Insert feedback into the database
+        feedback_collection.insert_one({
             "form_id": form_id,
             "course_feedback_data": feedback_data,
             "lab_feedback_data": lab_feedback_data,
-        }
+        })
 
-        # Insert the feedback into the database
-        feedback_collection.insert_one(feedback_document)
-
-        # Redirect to the "Thank You" page
-        return redirect(url_for('thank_you', form_id=form_id))
+        # Set a cookie to track submission
+        response = make_response(redirect(url_for('thank_you', form_id=form_id)))
+        response.set_cookie(f"submitted_{form_id}", "true", max_age=60*60*24*365)  # Expire in 1 year
+        flash("Feedback submitted successfully!", "success")
+        return response
 
     except Exception as e:
-        # Log the exception for debugging
         print(f"Error submitting feedback: {e}")
-
-        # Display a friendly error message and redirect back to the form
         flash("An error occurred while submitting your feedback. Please try again.", "danger")
         return redirect(request.referrer or url_for('home'))
 
