@@ -36,13 +36,50 @@
         margin-bottom: 10px;
         color: #333;
       }
+
+      .error {
+        color: red;
+        font-weight: bold;
+      }
+
+      .footer {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #555;
+      }
+
+      .footer a {
+        color: #0a66c2; /* LinkedIn blue */
+        text-decoration: none;
+        font-weight: bold;
+      }
+
+      .footer a:hover {
+        text-decoration: underline;
+      }
     </style>
   </head>
   <body>
     <div class="thank-you-container">
-      <h1>Thank You for Your Feedback!</h1>
-      <p>Your responses have been submitted successfully.</p>
-      <p>We appreciate your time and effort in helping us improve.</p>
+      {% if first_visit %}
+        <h1>Thank You for Your Feedback!</h1>
+        <p>Your responses have been submitted successfully.</p>
+        <p>We appreciate your time and effort in helping us improve.</p>
+      {% elif already_submitted %}
+        <h1 class="error">Feedback Already Submitted!</h1>
+        <p>You have already submitted feedback for this form.</p>
+        <p>Multiple submissions are not allowed.</p>
+      {% endif %}
+    </div>
+
+    <!-- Footer positioned below the box -->
+    <div class="footer">
+      <h5>Developed by Venkatesh M, III CSE B</h5>
+      <p>
+        <a href="https://www.linkedin.com/in/venkateshm05/" target="_blank">
+          Connect with me on LinkedIn
+        </a>
+      </p>
     </div>
   </body>
 </html>
