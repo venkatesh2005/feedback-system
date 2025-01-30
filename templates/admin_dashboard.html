@@ -128,6 +128,11 @@
               <a class="nav-link" href="{{ url_for('manage_departments') }}">Manage Departments</a>
             </li>
             <li class="nav-item">
+              <span class="nav-link text-white">
+                <i class="fas fa-user-circle"></i> {{ username }}
+              </span>
+            </li>
+            <li class="nav-item">
               <button class="btn btn-logout" onclick="location.href='{{ url_for('logout') }}'">
                 Logout
               </button>
