@@ -301,6 +301,8 @@ def admin_dashboard():
         flash("Unauthorized access.", "danger")
         return redirect(url_for('login'))
 
+    username = session.get('username', 'Admin')  # Get username from session
+
     # Get filters from query parameters
     academic_year = request.args.get('academicYear', '').strip()
     department = request.args.get('department', '').strip()
@@ -361,6 +363,7 @@ def admin_dashboard():
     # Render the admin dashboard template
     return render_template(
         'admin_dashboard.html',
+        username=username,
         forms=paginated_forms,
         total_pages=total_pages,
         current_page=page,
