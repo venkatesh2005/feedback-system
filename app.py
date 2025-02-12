@@ -1137,10 +1137,12 @@ def download_report(form_id):
         document.add_page_break()
 
     # Save the document
+    batch_name = form_details.get("batch", "Unknown_Batch").replace(" ", "_")  # Replace spaces with underscores
+    file_name = f"{batch_name}_Feedback_Report.docx"  # Format: BatchName_Feedback_Report.docx
     file_path = f"feedback_report_{form_id}.docx"
     document.save(file_path)
 
-    return send_file(file_path, as_attachment=True, download_name="Feedback_Report.docx")
+    return send_file(file_path, as_attachment=True, download_name=file_name)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
